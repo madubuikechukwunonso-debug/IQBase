@@ -9,19 +9,19 @@ export async function generatePremiumReport(
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create()
   const page = pdfDoc.addPage([612, 792]) // Letter size
-  
+
   const { width, height } = page.getSize()
-  
+
   // Load fonts
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
-  
+
   // Colors
   const primaryColor = rgb(0.2, 0.4, 0.8)
   const darkColor = rgb(0.1, 0.1, 0.1)
   const lightGray = rgb(0.9, 0.9, 0.9)
   const mediumGray = rgb(0.5, 0.5, 0.5)
-  
+
   // Header Background
   page.drawRectangle({
     x: 0,
@@ -30,7 +30,7 @@ export async function generatePremiumReport(
     height: 180,
     color: primaryColor,
   })
-  
+
   // Logo / Title
   page.drawText('IQBase', {
     x: 50,
@@ -39,7 +39,7 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: rgb(1, 1, 1),
   })
-  
+
   page.drawText('Cognitive Assessment Report', {
     x: 50,
     y: height - 100,
@@ -47,7 +47,7 @@ export async function generatePremiumReport(
     font: helvetica,
     color: rgb(1, 1, 1),
   })
-  
+
   // Certificate Badge
   page.drawRectangle({
     x: width - 180,
@@ -58,7 +58,7 @@ export async function generatePremiumReport(
     borderColor: primaryColor,
     borderWidth: 3,
   })
-  
+
   page.drawText('CERTIFIED', {
     x: width - 165,
     y: height - 85,
@@ -66,7 +66,7 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: primaryColor,
   })
-  
+
   page.drawText('COGNITIVE', {
     x: width - 165,
     y: height - 105,
@@ -74,7 +74,7 @@ export async function generatePremiumReport(
     font: helvetica,
     color: mediumGray,
   })
-  
+
   page.drawText('PROFILE', {
     x: width - 165,
     y: height - 120,
@@ -82,10 +82,10 @@ export async function generatePremiumReport(
     font: helvetica,
     color: mediumGray,
   })
-  
+
   // User Info Section
   let yPos = height - 220
-  
+
   page.drawText('Participant Information', {
     x: 50,
     y: yPos,
@@ -93,9 +93,9 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: darkColor,
   })
-  
+
   yPos -= 30
-  
+
   page.drawText(`Name: ${userName || 'Not provided'}`, {
     x: 50,
     y: yPos,
@@ -103,9 +103,9 @@ export async function generatePremiumReport(
     font: helvetica,
     color: darkColor,
   })
-  
+
   yPos -= 20
-  
+
   page.drawText(`Email: ${userEmail}`, {
     x: 50,
     y: yPos,
@@ -113,9 +113,9 @@ export async function generatePremiumReport(
     font: helvetica,
     color: darkColor,
   })
-  
+
   yPos -= 20
-  
+
   page.drawText(`Test Date: ${testDate.toLocaleDateString()}`, {
     x: 50,
     y: yPos,
@@ -123,19 +123,19 @@ export async function generatePremiumReport(
     font: helvetica,
     color: darkColor,
   })
-  
+
   // Score Section
   yPos -= 50
-  
+
   page.drawRectangle({
     x: 50,
     y: yPos - 80,
     width: width - 100,
     height: 100,
     color: lightGray,
-    borderRadius: 8,
+    // borderRadius: 8,  ← REMOVED (not supported)
   })
-  
+
   page.drawText('COGNITIVE SCORE', {
     x: 80,
     y: yPos - 30,
@@ -143,7 +143,7 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: mediumGray,
   })
-  
+
   page.drawText(result.score.toString(), {
     x: 80,
     y: yPos - 75,
@@ -151,7 +151,7 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: primaryColor,
   })
-  
+
   page.drawText(result.category.toUpperCase(), {
     x: 200,
     y: yPos - 50,
@@ -159,7 +159,7 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: darkColor,
   })
-  
+
   page.drawText(`Percentile: ${result.percentile}%`, {
     x: 200,
     y: yPos - 70,
@@ -167,10 +167,10 @@ export async function generatePremiumReport(
     font: helvetica,
     color: mediumGray,
   })
-  
+
   // Category Breakdown
   yPos -= 140
-  
+
   page.drawText('Category Breakdown', {
     x: 50,
     y: yPos,
@@ -178,16 +178,16 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: darkColor,
   })
-  
+
   yPos -= 40
-  
+
   const categories = [
     { label: 'Logical Reasoning', score: result.categoryScores.logical },
     { label: 'Pattern Recognition', score: result.categoryScores.pattern },
     { label: 'Numerical Ability', score: result.categoryScores.numerical },
     { label: 'Processing Speed', score: result.categoryScores.speed },
   ]
-  
+
   categories.forEach((cat) => {
     // Label
     page.drawText(cat.label, {
@@ -197,7 +197,7 @@ export async function generatePremiumReport(
       font: helvetica,
       color: darkColor,
     })
-    
+   
     // Score
     page.drawText(`${cat.score}%`, {
       x: 200,
@@ -206,7 +206,7 @@ export async function generatePremiumReport(
       font: helveticaBold,
       color: darkColor,
     })
-    
+   
     // Bar background
     page.drawRectangle({
       x: 260,
@@ -214,9 +214,9 @@ export async function generatePremiumReport(
       width: 300,
       height: 12,
       color: lightGray,
-      borderRadius: 6,
+      // borderRadius: 6,  ← REMOVED (not supported)
     })
-    
+   
     // Bar fill
     page.drawRectangle({
       x: 260,
@@ -224,15 +224,15 @@ export async function generatePremiumReport(
       width: (cat.score / 100) * 300,
       height: 12,
       color: cat.score >= 70 ? rgb(0.2, 0.8, 0.4) : cat.score >= 50 ? rgb(1, 0.8, 0.2) : rgb(0.9, 0.3, 0.3),
-      borderRadius: 6,
+      // borderRadius: 6,  ← REMOVED (not supported)
     })
-    
+   
     yPos -= 30
   })
-  
+
   // Interpretation
   yPos -= 20
-  
+
   page.drawText('Interpretation', {
     x: 50,
     y: yPos,
@@ -240,19 +240,19 @@ export async function generatePremiumReport(
     font: helveticaBold,
     color: darkColor,
   })
-  
+
   yPos -= 30
-  
+
   // Wrap description text
   const description = result.categoryDescription
   const words = description.split(' ')
   let line = ''
   const maxWidth = 500
-  
+
   words.forEach((word) => {
     const testLine = line + word + ' '
     const testWidth = helvetica.widthOfTextAtSize(testLine, 10)
-    
+   
     if (testWidth > maxWidth && line !== '') {
       page.drawText(line, {
         x: 50,
@@ -267,7 +267,7 @@ export async function generatePremiumReport(
       line = testLine
     }
   })
-  
+
   if (line !== '') {
     page.drawText(line, {
       x: 50,
@@ -277,7 +277,7 @@ export async function generatePremiumReport(
       color: darkColor,
     })
   }
-  
+
   // Footer
   page.drawLine({
     start: { x: 50, y: 80 },
@@ -285,7 +285,7 @@ export async function generatePremiumReport(
     thickness: 1,
     color: lightGray,
   })
-  
+
   page.drawText('This report is for informational purposes only and does not constitute a clinical diagnosis.', {
     x: 50,
     y: 60,
@@ -293,7 +293,7 @@ export async function generatePremiumReport(
     font: helvetica,
     color: mediumGray,
   })
-  
+
   page.drawText('Generated by IQBase - iqbase.com', {
     x: 50,
     y: 45,
@@ -301,7 +301,7 @@ export async function generatePremiumReport(
     font: helvetica,
     color: mediumGray,
   })
-  
+
   const pdfBytes = await pdfDoc.save()
   return pdfBytes
 }
