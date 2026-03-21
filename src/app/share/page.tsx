@@ -1,4 +1,5 @@
 "use client"
+
 import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import {
@@ -20,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { useState } from "react"
+import { Suspense } from "react"
 
 function ShareContent() {
   const searchParams = useSearchParams()
@@ -35,7 +37,9 @@ function ShareContent() {
     return "Just took a cognitive assessment - interesting insights!"
   }
 
-  const shareText = encodeURIComponent(`${getScoreMessage()}\n\nScore: ${score} (${category})\nPercentile: ${percentile}%\n\nTest your cognitive abilities at`)
+  const shareText = encodeURIComponent(
+    `${getScoreMessage()}\n\nScore: ${score} (${category})\nPercentile: ${percentile}%\n\nTest your cognitive abilities at`
+  )
   const shareUrl = encodeURIComponent("https://iqbase.com")
 
   const shareLinks = {
@@ -90,7 +94,7 @@ function ShareContent() {
                 >
                   <Trophy className="w-10 h-10 text-white" />
                 </motion.div>
-               
+
                 <p className="text-sm text-muted-foreground mb-2">Cognitive Score</p>
                 <h1 className={`text-6xl font-bold ${getScoreColor(score)} mb-2`}>
                   {score}
@@ -98,7 +102,7 @@ function ShareContent() {
                 <Badge className="text-lg px-4 py-1 mb-4">
                   {category}
                 </Badge>
-               
+
                 <div className="flex justify-center gap-8 mt-6">
                   <div className="text-center">
                     <p className="text-2xl font-bold">{percentile}%</p>
@@ -242,9 +246,16 @@ function ShareContent() {
   )
 }
 
-// Main page with Suspense
 export default function SharePage() {
   return (
-    <ShareContent />
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      }
+    >
+      <ShareContent />
+    </Suspense>
   )
 }
