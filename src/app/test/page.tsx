@@ -1,16 +1,16 @@
 "use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Brain, 
-  Clock, 
-  ChevronRight, 
+import {
+  Brain,
+  Clock,
+  ChevronRight,
   AlertCircle,
   CheckCircle,
   XCircle,
   Trophy,
-  Timer
+  Timer,
+  Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,11 +21,16 @@ import { calculateScore } from "@/lib/scoring"
 import { Answer, Question, TestResult } from "@/types"
 import { shuffleArray } from "@/lib/utils"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 const QUESTION_COUNT = 20
 const WARNING_TIME = 10 // seconds
 
 export default function TestPage() {
+  const { data: session } = useSession()
+  const router = useRouter()
+
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -34,7 +39,6 @@ export default function TestPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
-  const [startTime, setStartTime] = useState<number>(0)
 
   // Initialize test
   const startTest = useCallback(() => {
@@ -43,25 +47,21 @@ export default function TestPage() {
     setCurrentIndex(0)
     setAnswers([])
     setTestState('testing')
-    setStartTime(Date.now())
     setTimeLeft(shuffled[0].timeLimit)
   }, [])
 
   // Timer effect
   useEffect(() => {
     if (testState !== 'testing' || showFeedback) return
-
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // Time's up - auto-submit
           handleAnswerSubmit(-1)
           return 0
         }
         return prev - 1
       })
     }, 1000)
-
     return () => clearInterval(timer)
   }, [testState, currentIndex, showFeedback])
 
@@ -84,10 +84,10 @@ export default function TestPage() {
       isCorrect: answerIndex === currentQuestion.correctAnswer,
     }
 
-    setAnswers((prev) => [...prev, answer])
+    const updatedAnswers = [...answers, answer]
+    setAnswers(updatedAnswers)
     setShowFeedback(true)
 
-    // Move to next question after delay
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
         setCurrentIndex((prev) => prev + 1)
@@ -95,10 +95,20 @@ export default function TestPage() {
         setSelectedAnswer(null)
         setShowFeedback(false)
       } else {
-        // Test completed
-        const testResult = calculateScore([...answers, answer], questions)
+        // Test completed - calculate result
+        const testResult = calculateScore(updatedAnswers, questions)
         setResult(testResult)
-        setTestState('completed')
+
+        // === PAYMENT GATE LOGIC ===
+        if (!session?.user) {
+          // Not logged in → force registration first
+          router.push(`/register?callbackUrl=/test`)
+        } else {
+          // Logged in → go to pricing page (user chooses $1 or $5)
+          // Pass the full result via query string
+          const resultString = encodeURIComponent(JSON.stringify(testResult))
+          router.push(`/pricing?result=${resultString}`)
+        }
       }
     }, 1500)
   }
@@ -119,7 +129,7 @@ export default function TestPage() {
     return 'Expert'
   }
 
-  // Intro screen
+  // ==================== INTRO SCREEN ====================
   if (testState === 'intro') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4">
@@ -159,7 +169,6 @@ export default function TestPage() {
                   <p className="text-sm text-muted-foreground">Average completion</p>
                 </div>
               </div>
-
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
@@ -176,17 +185,15 @@ export default function TestPage() {
                   </div>
                 </div>
               </div>
-
-              <Button 
-                size="xl" 
-                variant="gradient" 
+              <Button
+                size="xl"
+                variant="gradient"
                 className="w-full btn-shine"
                 onClick={startTest}
               >
                 Start Assessment
                 <ChevronRight className="ml-2 w-5 h-5" />
               </Button>
-
               <p className="text-xs text-center text-muted-foreground">
                 By starting, you agree to our{" "}
                 <Link href="/terms" className="underline hover:text-foreground">
@@ -204,7 +211,7 @@ export default function TestPage() {
     )
   }
 
-  // Test completed screen
+  // ==================== COMPLETED SCREEN (Payment Gate) ====================
   if (testState === 'completed' && result) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4">
@@ -231,34 +238,36 @@ export default function TestPage() {
                 Great job! You&apos;ve completed all {QUESTION_COUNT} questions.
               </p>
             </CardHeader>
+
             <CardContent className="space-y-6">
-              <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10">
-                <p className="text-sm text-muted-foreground mb-2">Your Cognitive Score</p>
-                <p className="text-6xl font-bold gradient-text">{result.score}</p>
-                <p className="text-lg text-muted-foreground mt-2">
-                  {result.category}
+              <div className="p-8 rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/20">
+                <Lock className="w-12 h-12 text-primary mx-auto mb-4" />
+                <p className="text-xl font-semibold">Unlock Your Official Results</p>
+                <p className="text-muted-foreground mt-3 text-sm">
+                  Results are locked until payment.<br />
+                  Choose your plan:
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground">Percentile</p>
-                  <p className="text-2xl font-bold">{result.percentile}%</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground">Correct</p>
-                  <p className="text-2xl font-bold">
-                    {answers.filter(a => a.isCorrect).length}/{QUESTION_COUNT}
-                  </p>
-                </div>
-              </div>
-
-              <Link href={`/results?score=${result.score}&percentile=${result.percentile}&category=${encodeURIComponent(result.category)}`}>
-                <Button size="xl" variant="gradient" className="w-full btn-shine">
-                  View Full Results
+              <div className="space-y-3">
+                <Button
+                  size="xl"
+                  variant="gradient"
+                  className="w-full btn-shine"
+                  onClick={() => {
+                    const resultString = encodeURIComponent(JSON.stringify(result))
+                    router.push(`/pricing?result=${resultString}`)
+                  }}
+                >
+                  Unlock Results Now
                   <ChevronRight className="ml-2 w-5 h-5" />
                 </Button>
-              </Link>
+
+                <p className="text-xs text-center text-muted-foreground">
+                  $1 — Full interactive results on website<br />
+                  $5 — Full results + Professional PDF Certificate emailed to you
+                </p>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -266,7 +275,7 @@ export default function TestPage() {
     )
   }
 
-  // Testing screen
+  // ==================== TESTING SCREEN ====================
   const currentQuestion = questions[currentIndex]
   const progress = ((currentIndex) / questions.length) * 100
 
@@ -280,8 +289,8 @@ export default function TestPage() {
               <Badge variant="outline" className="text-sm">
                 Question {currentIndex + 1} of {questions.length}
               </Badge>
-              <Badge 
-                variant="secondary" 
+              <Badge
+                variant="secondary"
                 className={`text-sm ${getDifficultyColor(currentQuestion.difficulty)} text-white`}
               >
                 {getDifficultyLabel(currentQuestion.difficulty)}
