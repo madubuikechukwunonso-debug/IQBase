@@ -1,8 +1,11 @@
-// src/auth.ts
+// src/lib/auth.ts
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter"; // ← note: @next-auth/... for v4 compatibility
-import prisma from "@/lib/prisma"; // adjust path if your Prisma client is elsewhere
+import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
+import TwitterProvider from "next-auth/providers/twitter";
+import { PrismaAdapter } from "@next-auth/prisma-adapter"; // Correct for NextAuth v4
+import prisma from "@/lib/prisma"; // Your Prisma client export (ensure it exists in src/lib/prisma.ts)
 import bcrypt from "bcryptjs";
 
 export const authOptions = {
@@ -20,24 +23,49 @@ export const authOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email as string },
         });
 
         if (!user || !user.hashedPassword) {
           return null;
         }
 
-        const isValid = await bcrypt.compare(credentials.password, user.hashedPassword);
+        const isValid = await bcrypt.compare(
+          credentials.password as string,
+          user.hashedPassword
+        );
 
         if (!isValid) return null;
 
-        return { id: user.id, email: user.email, name: user.name ?? null };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name ?? null,
+        };
       },
     }),
-    // Add GoogleProvider, GitHubProvider, etc. here later if needed
+
+    // Google Provider
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+
+    // Facebook Provider
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+    }),
+
+    // Twitter / X Provider (OAuth 2.0 recommended)
+    TwitterProvider({
+      clientId: process.env.TWITTER_CLIENT_ID!,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET!,
+      version: "2.0", // Use OAuth 2.0 (email may require app approval in X dev portal)
+    }),
   ],
   session: {
-    strategy: "jwt", // or "database" if you prefer adapter-managed sessions
+    strategy: "jwt", // JWT is simpler; change to "database" if you want adapter-managed sessions
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -48,16 +76,17 @@ export const authOptions = {
     },
     async session({ session, token }) {
       if (session.user && token.id) {
-        session.user.id = token.id; // string or number based on your Prisma id type
+        // Type assertion (safe with augmentation in types/next-auth.d.ts)
+        (session.user as any).id = token.id as string;
       }
       return session;
     },
   },
   pages: {
-    signIn: "/login", // create this page if you don't have one
-    error: "/auth/error", // optional
+    signIn: "/login",
+    error: "/auth/error", // Optional custom error page
   },
-  secret: process.env.NEXTAUTH_SECRET, // required – generate a strong one
+  secret: process.env.NEXTAUTH_SECRET, // Must be set in .env – generate a strong value
 };
 
 export default NextAuth(authOptions);
