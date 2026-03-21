@@ -1,14 +1,13 @@
 "use client"
-
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { 
-  Brain, 
-  Mail, 
-  Lock, 
-  Unlock, 
-  Download, 
+import {
+  Brain,
+  Mail,
+  Lock,
+  Unlock,
+  Download,
   Share2,
   TrendingUp,
   Target,
@@ -26,12 +25,12 @@ import { Progress } from "@/components/ui/progress"
 import Link from "next/link"
 
 // Category score component
-function CategoryScore({ 
-  label, 
-  score, 
-  icon: Icon, 
-  color 
-}: { 
+function CategoryScore({
+  label,
+  score,
+  icon: Icon,
+  color
+}: {
   label: string
   score: number
   icon: React.ElementType
@@ -58,7 +57,6 @@ function ResultsContent() {
   const [isEmailSubmitted, setIsEmailSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-
   const score = parseInt(searchParams.get("score") || "100")
   const percentile = parseInt(searchParams.get("percentile") || "50")
   const category = searchParams.get("category") || "Average"
@@ -74,19 +72,15 @@ function ResultsContent() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError("Please enter a valid email address")
       return
     }
-
     setIsLoading(true)
-
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500))
-
     setIsEmailSubmitted(true)
     setIsLoading(false)
   }
@@ -183,10 +177,9 @@ function ResultsContent() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-6">
-                  Enter your email to access your detailed cognitive breakdown, personalized recommendations, 
+                  Enter your email to access your detailed cognitive breakdown, personalized recommendations,
                   and share your results with friends.
                 </p>
-
                 <form onSubmit={handleEmailSubmit} className="space-y-4">
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1 relative">
@@ -200,9 +193,9 @@ function ResultsContent() {
                         disabled={isLoading}
                       />
                     </div>
-                    <Button 
-                      type="submit" 
-                      size="lg" 
+                    <Button
+                      type="submit"
+                      size="lg"
                       variant="gradient"
                       isLoading={isLoading}
                       className="btn-shine"
@@ -218,7 +211,6 @@ function ResultsContent() {
                     </div>
                   )}
                 </form>
-
                 <div className="mt-6 pt-6 border-t border-border">
                   <p className="text-sm text-muted-foreground mb-4">What you&apos;ll unlock:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -246,27 +238,27 @@ function ResultsContent() {
               <CardContent>
                 <div className="relative">
                   <div className="blur-lock space-y-4">
-                    <CategoryScore 
-                      label="Logical Reasoning" 
-                      score={85} 
+                    <CategoryScore
+                      label="Logical Reasoning"
+                      score={85}
                       icon={Target}
                       color="text-blue-500"
                     />
-                    <CategoryScore 
-                      label="Pattern Recognition" 
-                      score={72} 
+                    <CategoryScore
+                      label="Pattern Recognition"
+                      score={72}
                       icon={TrendingUp}
                       color="text-purple-500"
                     />
-                    <CategoryScore 
-                      label="Numerical Ability" 
-                      score={68} 
+                    <CategoryScore
+                      label="Numerical Ability"
+                      score={68}
                       icon={Zap}
                       color="text-orange-500"
                     />
-                    <CategoryScore 
-                      label="Processing Speed" 
-                      score={90} 
+                    <CategoryScore
+                      label="Processing Speed"
+                      score={90}
                       icon={Clock}
                       color="text-green-500"
                     />
@@ -294,27 +286,27 @@ function ResultsContent() {
                 <CardTitle>Detailed Breakdown</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <CategoryScore 
-                  label="Logical Reasoning" 
-                  score={categoryScores.logical} 
+                <CategoryScore
+                  label="Logical Reasoning"
+                  score={categoryScores.logical}
                   icon={Target}
                   color="text-blue-500"
                 />
-                <CategoryScore 
-                  label="Pattern Recognition" 
-                  score={categoryScores.pattern} 
+                <CategoryScore
+                  label="Pattern Recognition"
+                  score={categoryScores.pattern}
                   icon={TrendingUp}
                   color="text-purple-500"
                 />
-                <CategoryScore 
-                  label="Numerical Ability" 
-                  score={categoryScores.numerical} 
+                <CategoryScore
+                  label="Numerical Ability"
+                  score={categoryScores.numerical}
                   icon={Zap}
                   color="text-orange-500"
                 />
-                <CategoryScore 
-                  label="Processing Speed" 
-                  score={categoryScores.speed} 
+                <CategoryScore
+                  label="Processing Speed"
+                  score={categoryScores.speed}
                   icon={Clock}
                   color="text-green-500"
                 />
@@ -345,7 +337,6 @@ function ResultsContent() {
                   </ul>
                 </CardContent>
               </Card>
-
               <Card className="border-0 shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -399,8 +390,8 @@ function ResultsContent() {
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              <strong>Disclaimer:</strong> This is not a clinically validated IQ test but inspired by standard 
-              psychometric principles found in the public domain. Results are for entertainment and 
+              <strong>Disclaimer:</strong> This is not a clinically validated IQ test but inspired by standard
+              psychometric principles found in the public domain. Results are for entertainment and
               self-reflection purposes only and cannot be used in any court or for legal purposes.
             </p>
           </div>
