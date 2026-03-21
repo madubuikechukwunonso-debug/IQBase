@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { auth } from "./auth";
+import { auth } from "@/lib/auth";
 
 export const getSession = cache(async () => {
   const sessionId = cookies().get(auth.sessionCookieName)?.value ?? null;
