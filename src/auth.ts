@@ -2,7 +2,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma"; // assumes you have this exported
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 import type { Adapter } from "next-auth/adapters";
@@ -13,59 +13,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        if (!user || !user.hashedPassword) {
-          return null;
-        }
+        if (!user?.hashedPassword) return null;
 
-        const passwordsMatch = await bcrypt.compare(
-          credentials.password as string,
-          user.hashedPassword
-        );
+        const isValid = await bcrypt.compare(credentials.password as string, user.hashedPassword);
+        if (!isValid) return null;
 
-        if (!passwordsMatch) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name ?? null,
-        };
+        return { id: user.id, email: user.email, name: user.name ?? null };
       },
     }),
-    // Optional: add Google, GitHub, etc. later
-    // GoogleProvider({ clientId: ..., clientSecret: ... }),
+    // Add other providers if needed
   ],
-  session: {
-    strategy: "jwt", // works well with adapter too
-  },
+  session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id = user.id;   // Store id in JWT
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
+        // Now safe thanks to type augmentation
         session.user.id = token.id as string;
       }
       return session;
     },
   },
   pages: {
-    signIn: "/login", // create this page if needed
-    error: "/auth/error",
+    signIn: "/login",
   },
-  secret: process.env.NEXTAUTH_SECRET, // must be set in .env
+  secret: process.env.NEXTAUTH_SECRET,
 });
