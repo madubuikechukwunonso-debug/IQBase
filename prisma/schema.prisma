@@ -80,6 +80,17 @@ model Question {
   updatedAt   DateTime @updatedAt
 }
 
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  hashedPassword String?   // ← ADD THIS LINE
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tests          Test[]
+  payments       Payment[]
+}
+
 enum TestStatus {
   IN_PROGRESS
   COMPLETED
@@ -97,3 +108,4 @@ enum PaymentStatus {
   FAILED
   REFUNDED
 }
+
