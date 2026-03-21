@@ -1,14 +1,13 @@
-// src/lib/auth.ts
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import TwitterProvider from "next-auth/providers/twitter";
-import { PrismaAdapter } from "@next-auth/prisma-adapter"; // Correct for NextAuth v4
-import prisma from "@/lib/prisma"; // Your Prisma client export (ensure it exists in src/lib/prisma.ts)
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
@@ -44,28 +43,22 @@ export const authOptions = {
         };
       },
     }),
-
-    // Google Provider
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-
-    // Facebook Provider
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
-
-    // Twitter / X Provider (OAuth 2.0 recommended)
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-      version: "2.0", // Use OAuth 2.0 (email may require app approval in X dev portal)
+      version: "2.0",
     }),
   ],
   session: {
-    strategy: "jwt", // JWT is simpler; change to "database" if you want adapter-managed sessions
+    strategy: "jwt" as const, // literal type assertion fixes TS error
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -76,17 +69,16 @@ export const authOptions = {
     },
     async session({ session, token }) {
       if (session.user && token.id) {
-        // Type assertion (safe with augmentation in types/next-auth.d.ts)
-        (session.user as any).id = token.id as string;
+        session.user.id = token.id as string;
       }
       return session;
     },
   },
   pages: {
     signIn: "/login",
-    error: "/auth/error", // Optional custom error page
+    error: "/auth/error",
   },
-  secret: process.env.NEXTAUTH_SECRET, // Must be set in .env – generate a strong value
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export default NextAuth(authOptions);
