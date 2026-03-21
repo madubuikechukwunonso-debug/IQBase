@@ -10,16 +10,24 @@ export async function POST(req: Request) {
     const { email, password } = await req.json();
 
     const user = await prisma.user.findUnique({ where: { email } });
+
     if (!user || !user.hashedPassword) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
     const valid = await compare(password, user.hashedPassword);
+
     if (!valid) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    const session = await auth.createSession(user.id, {});
+    // ── Fixed line ───────────────────────────────────────────────
+    const session = await auth.createSession({
+      userId: user.id,
+      attributes: {},
+    });
+    // ──────────────────────────────────────────────────────────────
+
     const sessionCookie = auth.createSessionCookie(session.id);
 
     return new NextResponse(null, {
