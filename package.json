@@ -31,9 +31,9 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
     "class-variance-authority": "^0.7.0",
-    "lucia": "^3.2.0",                    // ← ADDED (core Lucia)
-    "@lucia-auth/adapter-prisma": "^4.0.1", // ← ADDED (Prisma adapter)
-    "bcryptjs": "^2.4.3"                    // ← ADDED (for password hashing in register/login)
+    "lucia": "^3.2.0",                    
+    "@lucia-auth/adapter-prisma": "^4.0.1",
+    "bcryptjs": "^2.4.3"                    
   },
   "devDependencies": {
     "typescript": "^5.5.3",
@@ -47,6 +47,5 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
     "tailwindcss-animate": "^1.0.7",
-    "@types/bcryptjs": "^2.4.6"             // ← ADDED (TypeScript types for bcryptjs)
-  }
+    "@types/bcryptjs": "^2.4.6"             
 }
