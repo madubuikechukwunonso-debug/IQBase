@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Brain, Menu, X } from "lucide-react"
@@ -60,17 +59,28 @@ export function Navigation() {
               ))}
             </nav>
 
-            {/* Actions */}
-            <div className="flex items-center gap-4">
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center gap-4">
               <ModeToggle />
-              <Link href="/test" className="hidden md:block">
+              <Link href="/login">
+                <Button variant="outline" size="sm">
+                  Sign in
+                </Button>
+              </Link>
+              <Link href="/test">
                 <Button variant="gradient" size="sm">
                   Start Test
                 </Button>
               </Link>
+            </div>
+
+            {/* Mobile Hamburger */}
+            <div className="flex md:hidden items-center gap-3">
+              <ModeToggle />
               <button
-                className="md:hidden p-2"
+                className="p-2"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label="Toggle menu"
               >
                 {isMobileMenuOpen ? (
                   <X className="w-6 h-6" />
@@ -99,16 +109,24 @@ export function Navigation() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-lg font-medium py-3 border-b border-border"
+                  className="text-lg font-medium py-3 border-b border-border hover:text-primary transition-colors"
                 >
                   {link.label}
                 </Link>
               ))}
-              <Link href="/test" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="gradient" className="w-full mt-4">
-                  Start Test
-                </Button>
-              </Link>
+
+              <div className="flex flex-col gap-4 mt-6">
+                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">
+                    Sign in
+                  </Button>
+                </Link>
+                <Link href="/test" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="gradient" className="w-full">
+                    Start Test
+                  </Button>
+                </Link>
+              </div>
             </nav>
           </motion.div>
         )}
