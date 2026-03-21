@@ -57,7 +57,7 @@ export const {
 
   callbacks: {
     async jwt({ token, user }) {
-      // Runs on login
+      // Attach user ID to token on login
       if (user) {
         token.id = user.id;
       }
@@ -65,19 +65,10 @@ export const {
     },
 
     async session({ session, token }) {
-      // Ensure session.user exists
-      if (!session.user) {
-        session.user = {
-          id: "",
-          name: null,
-          email: null,
-        };
+      // Safely attach user ID to session
+      if (session.user && token?.id) {
+        (session.user as any).id = token.id;
       }
-
-      if (token?.id) {
-        session.user.id = token.id as string;
-      }
-
       return session;
     },
   },
