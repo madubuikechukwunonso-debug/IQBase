@@ -2,31 +2,33 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const form = await req.formData();
-    const email = form.get("email") as string;
-    const password = form.get("password") as string;
-    const name = form.get("name") as string | null;
+    const body = await request.json();
+    const { name, email, password } = body;
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
 
-    const exists = await prisma.user.findUnique({ where: { email } });
-    if (exists) {
-      return NextResponse.json({ error: "Email taken" }, { status: 409 });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return NextResponse.json({ error: "Email already in use" }, { status: 409 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
     await prisma.user.create({
-      data: { email, name, hashedPassword },
+      data: {
+        email,
+        name: name || null,
+        hashedPassword,
+      },
     });
 
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ success: true }, { status: 201 });
+  } catch (error) {
+    console.error("Registration failed:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
