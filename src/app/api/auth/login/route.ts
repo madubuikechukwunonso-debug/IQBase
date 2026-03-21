@@ -27,11 +27,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ FIXED
-    const session = await auth.createSession(user.id);
-
-    // ✅ FIXED
-    const sessionCookie = auth.createSessionCookie(session);
+    // ✅ FIXED (important)
+    const { session, sessionCookie } = await auth.createSession(user.id);
 
     return new NextResponse(null, {
       status: 302,
