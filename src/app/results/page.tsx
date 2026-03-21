@@ -139,7 +139,7 @@ function ResultsContent() {
                 <h1 className={`text-7xl md:text-8xl font-bold ${getScoreColor(score)} mb-2`}>
                   {score}
                 </h1>
-                <Badge size="lg" className="text-lg px-4 py-1">
+                <Badge className="text-lg px-5 py-2 rounded-md font-medium">
                   {category}
                 </Badge>
               </div>
