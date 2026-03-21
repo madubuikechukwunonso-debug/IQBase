@@ -2,42 +2,31 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";  // ← adjust path to your Prisma client
-
-// IMPORTANT: Add this to .env.local (generate a strong one!)
-//
-// AUTH_SECRET=super-long-random-string (at least 32 chars)
-// Tip: run `openssl rand -base64 33` in terminal
+import { prisma } from "@/lib/prisma"; // ← we'll create this next
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
-      name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email:    { label: "Email",    type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        if (!user || !user.hashedPassword) {
-          return null;
-        }
+        if (!user?.hashedPassword) return null;
 
-        const passwordsMatch = await bcrypt.compare(
+        const isValid = await bcrypt.compare(
           credentials.password as string,
           user.hashedPassword
         );
 
-        if (!passwordsMatch) return null;
+        if (!isValid) return null;
 
-        // Return object that becomes the `token` & `session.user`
         return {
           id: user.id,
           email: user.email,
@@ -48,30 +37,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   pages: {
-    signIn: "/login",      // your custom login page
-    // error: "/auth/error",   // optional
+    signIn: "/login",
   },
 
-  session: {
-    strategy: "jwt",       // simplest & works great on Vercel (no DB sessions needed)
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
+  session: { strategy: "jwt" },
 
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
+    jwt({ token, user }) {
+      if (user) token.id = user.id;
       return token;
     },
-
-    async session({ session, token }) {
-      if (token?.id) {
-        session.user.id = token.id as string;
-      }
+    session({ session, token }) {
+      if (token?.id) session.user.id = token.id as string;
       return session;
     },
   },
 
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET!,
 });
