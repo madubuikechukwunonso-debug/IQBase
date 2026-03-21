@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth } from "../../../../lib/auth";
 import { PrismaClient } from "@prisma/client";
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
