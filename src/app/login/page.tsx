@@ -1,79 +1,69 @@
+// src/app/login/page.tsx
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
+    setLoading(true);
+    setError(null);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const form = new FormData(e.currentTarget);
+    const email = form.get("email") as string;
+    const password = form.get("password") as string;
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Login failed");
-      }
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
 
-      router.push("/dashboard");
-      router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    if (result?.error) {
+      setError("Invalid email or password");
+      setLoading(false);
+      return;
     }
-  };
+
+    router.push("/test"); // or wherever after login
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Login to Your Account</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm mb-1">Email</label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Password</label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button type="submit" className="w-full">
-              Log In
-            </Button>
-          </form>
-          <p className="text-center mt-4 text-sm">
-            Don&apos;t have an account?{" "}
-            <a href="/register" className="text-primary hover:underline">
-              Register
-            </a>
-          </p>
-        </CardContent>
-      </Card>
+    <div className="max-w-md mx-auto mt-20 p-6 border rounded-lg">
+      <h1 className="text-2xl font-bold mb-6">Login</h1>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          name="email"
+          type="email"
+          placeholder="Email"
+          required
+          className="w-full p-3 border rounded"
+        />
+        <input
+          name="password"
+          type="password"
+          placeholder="Password"
+          required
+          className="w-full p-3 border rounded"
+        />
+
+        {error && <p className="text-red-500">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white p-3 rounded disabled:opacity-50"
+        >
+          {loading ? "Signing in..." : "Login"}
+        </button>
+      </form>
     </div>
   );
 }
