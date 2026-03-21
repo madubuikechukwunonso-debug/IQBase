@@ -37,8 +37,7 @@ export function calculateScore(
     logical: { correct: 0, total: 0, timeBonus: 0 },
     pattern: { correct: 0, total: 0, timeBonus: 0 },
     numerical: { correct: 0, total: 0, timeBonus: 0 },
-    verbal: { correct: 0, total: 0, timeBonus: 0 },
-    speed: { correct: 0, total: 0, timeBonus: 0 }, // added missing category
+    speed: { correct: 0, total: 0, timeBonus: 0 },
   };
 
   answers.forEach((answer) => {
@@ -46,20 +45,27 @@ export function calculateScore(
     if (!question) return;
 
     const category = question.type;
-    categoryStats[category].total++;
+
+    // Only count categories we actually track
+    if (category in categoryStats) {
+      categoryStats[category].total++;
+    }
+
     maxPossibleScore += config.difficultyWeight * question.difficulty;
 
     if (answer.isCorrect) {
       // Base points for correct answer
       const basePoints = config.difficultyWeight * question.difficulty;
-
       // Time bonus for quick answers
       const timeBonus =
         getTimeBonus(answer.timeSpent, question.timeLimit * 1000) * basePoints;
 
       rawScore += basePoints + timeBonus;
-      categoryStats[category].correct++;
-      categoryStats[category].timeBonus += timeBonus;
+
+      if (category in categoryStats) {
+        categoryStats[category].correct++;
+        categoryStats[category].timeBonus += timeBonus;
+      }
     }
   });
 
@@ -67,11 +73,10 @@ export function calculateScore(
   const accuracy = maxPossibleScore > 0 ? rawScore / maxPossibleScore : 0;
 
   // Convert to IQ-like scale (mean 100, std dev 15)
-  // Using a modified approach to ensure reasonable distribution
   const normalizedScore =
     config.baseScore + accuracy * (config.maxScore - config.baseScore);
 
-  // Apply some randomization to simulate real test variance (±5 points)
+  // Apply small randomization to simulate real test variance (±5 points)
   const variance = (Math.random() - 0.5) * 10;
 
   // Final score within bounds
@@ -92,9 +97,6 @@ export function calculateScore(
     ),
     numerical: Math.round(
       (categoryStats.numerical.correct / Math.max(1, categoryStats.numerical.total)) * 100,
-    ),
-    verbal: Math.round(
-      (categoryStats.verbal.correct / Math.max(1, categoryStats.verbal.total)) * 100,
     ),
     speed: calculateSpeedScore(answers, questions),
   };
@@ -188,16 +190,19 @@ function generateRecommendations(
       'Practice syllogisms and logical deduction puzzles to strengthen your reasoning skills.',
     );
   }
+
   if (weaknesses.includes('Pattern Recognition')) {
     recommendations.push(
       'Engage in activities like Sudoku, chess, or sequence puzzles to improve pattern detection.',
     );
   }
+
   if (weaknesses.includes('Numerical Reasoning')) {
     recommendations.push(
       'Work on mental math exercises and percentage calculations to boost numerical fluency.',
     );
   }
+
   if (weaknesses.includes('Processing Speed')) {
     recommendations.push(
       'Try timed quizzes and quick-response games to increase your cognitive processing speed.',
@@ -214,6 +219,7 @@ function generateRecommendations(
   recommendations.push(
     'Regular cognitive exercise, adequate sleep, and a healthy diet support optimal brain function.',
   );
+
   recommendations.push(
     'Consider exploring new learning domains to diversify your cognitive abilities.',
   );
@@ -252,7 +258,6 @@ export function getDetailedBreakdown(
 
   // Calculate average time per category
   const categoryTimes: Record<string, number[]> = {};
-
   answers.forEach((answer) => {
     const question = questions.find((q) => q.id === answer.questionId);
     if (question) {
