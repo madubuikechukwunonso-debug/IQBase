@@ -10,12 +10,21 @@ export async function POST(req: Request) {
     const { email, password, name } = await req.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Email and password required" },
+        { status: 400 }
+      );
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (existingUser) {
-      return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+      return NextResponse.json(
+        { error: "Email already in use" },
+        { status: 409 }
+      );
     }
 
     const hashedPassword = await hash(password, 12);
@@ -24,12 +33,12 @@ export async function POST(req: Request) {
       data: {
         email,
         name,
-        hashedPassword, // Note: Add this field to Prisma User model if missing
+        hashedPassword,
       },
     });
 
-    const session = await auth.createSession(user.id, {});
-    const sessionCookie = auth.createSessionCookie(session.id);
+    // ✅ FIXED
+    const { session, sessionCookie } = await auth.createSession(user.id);
 
     return new NextResponse(null, {
       status: 302,
@@ -40,6 +49,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal error" },
+      { status: 500 }
+    );
   }
 }
