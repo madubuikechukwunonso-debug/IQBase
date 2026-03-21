@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tests     Test[]
+  payments  Payment[]
+}
+
+model Test {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  score     Int?
+  percentile Int?
+  category  String?
+  answers   Answer[]
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  status    TestStatus @default(IN_PROGRESS)
+  
+  // Category scores
+  logicalScore   Int?
+  patternScore   Int?
+  numericalScore Int?
+  speedScore     Int?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Answer {
+  id           String   @id @default(cuid())
+  testId       String
+  test         Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questionId   String
+  questionType String   // logical, pattern, numerical, verbal
+  difficulty   Int
+  selectedAnswer Int
+  isCorrect    Boolean
+  timeSpent    Int      // in milliseconds
+  createdAt    DateTime @default(now())
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  testId    String?
+  stripePaymentId String @unique
+  amount    Int      // in cents
+  currency  String   @default("usd")
+  tier      PaymentTier
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  type        String   // logical, pattern, numerical, verbal
+  difficulty  Int      // 1-5
+  question    String
+  options     String[] // JSON array of options
+  correctAnswer Int
+  explanation String
+  timeLimit   Int      // in seconds
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum TestStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum PaymentTier {
+  BASIC      // $1 - web access
+  PREMIUM    // $5 - PDF report
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
