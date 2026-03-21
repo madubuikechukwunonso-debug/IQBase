@@ -1,17 +1,23 @@
-import { Lucia } from "lucia";                          // ← Capital L, and it's the class
-import { PrismaAdapter } from "@lucia-auth/adapter-prisma"; // ← Use the class constructor
-import { nextjs_future } from "lucia";                 // ← Direct from "lucia"
+import { Lucia } from "lucia";
+import { PrismaAdapter } from "@lucia-auth/adapter-prisma";
+import { nextjs_future } from "lucia";
 import { PrismaClient } from "@prisma/client";
 
 const client = new PrismaClient();
 
-const adapter = new PrismaAdapter(client.session, client.user); // ← Required: pass session & user models
+// Create the Prisma adapter – pass the session and user models explicitly
+const adapter = new PrismaAdapter(client.session, client.user);
 
-export const lucia = new Lucia(adapter, {
+export const auth = new Lucia(adapter, {
   env: process.env.NODE_ENV === "development" ? "DEV" : "PROD",
   middleware: nextjs_future(),
   sessionCookie: {
-    expires: false, // Recommended for Next.js (no expiry on cookie)
+    // Recommended for Next.js: don't set expiry on cookie itself
+    expires: false,
+    // Optional: secure in production
+    attributes: {
+      secure: process.env.NODE_ENV === "production",
+    },
   },
   getUserAttributes: (data) => {
     return {
@@ -21,9 +27,9 @@ export const lucia = new Lucia(adapter, {
   },
 });
 
-// Type augmentation (required for getUser / session typing)
+// Required type augmentation for Lucia v3 (fixes typing for session/user)
 declare module "lucia" {
   interface Register {
-    Lucia: typeof lucia;
+    Lucia: typeof auth;
   }
 }
