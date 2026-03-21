@@ -2,15 +2,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma"; // make sure this file exists
-
-// Required env var (add to .env.local and Vercel dashboard)
-if (!process.env.AUTH_SECRET) {
-  throw new Error("AUTH_SECRET is not set in environment variables");
-}
+import { prisma } from "@/lib/prisma";
 
 export const {
-  handlers: { GET, POST },   // ← This exports GET & POST for the catch-all route
+  handlers: { GET, POST },
   auth,
   signIn,
   signOut,
@@ -18,64 +13,42 @@ export const {
   providers: [
     Credentials({
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        if (!user?.hashedPassword) {
-          return null;
-        }
+        if (!user?.hashedPassword) return null;
 
-        const isValid = await bcrypt.compare(
+        const passwordsMatch = await bcrypt.compare(
           credentials.password as string,
           user.hashedPassword
         );
 
-        if (!isValid) {
-          return null;
-        }
+        if (!passwordsMatch) return null;
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name ?? null,
-        };
+        return { id: user.id, email: user.email, name: user.name ?? null };
       },
     }),
-    // Add Google/GitHub/etc. later if needed
   ],
-
   pages: {
     signIn: "/login",
-    // error: "/auth/error", // optional
   },
-
-  session: {
-    strategy: "jwt", // works great on Vercel (no DB needed)
-  },
-
+  session: { strategy: "jwt" },
   callbacks: {
     jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
+      if (user) token.id = user.id;
       return token;
     },
     session({ session, token }) {
-      if (token?.id) {
-        session.user.id = token.id as string;
-      }
+      if (token?.id) session.user.id = token.id as string;
       return session;
     },
   },
-
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET!,
 });
