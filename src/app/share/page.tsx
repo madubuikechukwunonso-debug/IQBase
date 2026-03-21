@@ -1,13 +1,12 @@
 "use client"
-
 import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { 
-  Brain, 
-  Share2, 
-  Twitter, 
-  Facebook, 
-  Linkedin, 
+import {
+  Brain,
+  Share2,
+  Twitter,
+  Facebook,
+  Linkedin,
   Link as LinkIcon,
   CheckCircle,
   Trophy,
@@ -25,7 +24,6 @@ import { useState } from "react"
 function ShareContent() {
   const searchParams = useSearchParams()
   const [copied, setCopied] = useState(false)
-
   const score = parseInt(searchParams.get("score") || "100")
   const percentile = parseInt(searchParams.get("percentile") || "50")
   const category = searchParams.get("category") || "Average"
@@ -92,15 +90,15 @@ function ShareContent() {
                 >
                   <Trophy className="w-10 h-10 text-white" />
                 </motion.div>
-                
+               
                 <p className="text-sm text-muted-foreground mb-2">Cognitive Score</p>
                 <h1 className={`text-6xl font-bold ${getScoreColor(score)} mb-2`}>
                   {score}
                 </h1>
-                <Badge size="lg" className="text-lg px-4 py-1 mb-4">
+                <Badge className="text-lg px-4 py-1 mb-4">
                   {category}
                 </Badge>
-                
+               
                 <div className="flex justify-center gap-8 mt-6">
                   <div className="text-center">
                     <p className="text-2xl font-bold">{percentile}%</p>
