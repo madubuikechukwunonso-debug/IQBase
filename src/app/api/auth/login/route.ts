@@ -1,4 +1,4 @@
-import { auth } from "../../../../src/auth";
+import { auth } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -27,8 +27,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ FIXED (important)
-    const { session, sessionCookie } = await auth.createSession(user.id);
+    const session = await auth.createSession(user.id);
+    const sessionCookie = auth.createSessionCookie(session.id);
 
     return new NextResponse(null, {
       status: 302,
