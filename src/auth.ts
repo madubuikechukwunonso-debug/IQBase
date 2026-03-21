@@ -13,42 +13,74 @@ export const {
   providers: [
     Credentials({
       credentials: {
-        email: { label: "Email" },
+        email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        if (!user?.hashedPassword) return null;
+        if (!user || !user.hashedPassword) {
+          return null;
+        }
 
         const passwordsMatch = await bcrypt.compare(
           credentials.password as string,
           user.hashedPassword
         );
 
-        if (!passwordsMatch) return null;
+        if (!passwordsMatch) {
+          return null;
+        }
 
-        return { id: user.id, email: user.email, name: user.name ?? null };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name ?? null,
+        };
       },
     }),
   ],
+
   pages: {
     signIn: "/login",
   },
-  session: { strategy: "jwt" },
+
+  session: {
+    strategy: "jwt",
+  },
+
   callbacks: {
-    jwt({ token, user }) {
-      if (user) token.id = user.id;
+    async jwt({ token, user }) {
+      // Runs on login
+      if (user) {
+        token.id = user.id;
+      }
       return token;
     },
-    session({ session, token }) {
-      if (token?.id) session.user.id = token.id as string;
+
+    async session({ session, token }) {
+      // Ensure session.user exists
+      if (!session.user) {
+        session.user = {
+          id: "",
+          name: null,
+          email: null,
+        };
+      }
+
+      if (token?.id) {
+        session.user.id = token.id as string;
+      }
+
       return session;
     },
   },
-  secret: process.env.AUTH_SECRET!,
+
+  secret: process.env.AUTH_SECRET,
 });
