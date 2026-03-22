@@ -4,15 +4,14 @@ import { PrismaClient } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Trophy, TrendingUp, Target, Play } from "lucide-react";
+import ScoreTrendChart from "./ScoreTrendChart"; // ← NEW client component
 
 const prisma = new PrismaClient();
 
 export default async function DashboardPage() {
   const user = await getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const tests = await prisma.test.findMany({
     where: { userId: user.id },
@@ -20,34 +19,121 @@ export default async function DashboardPage() {
     take: 10,
   });
 
-  return (
-    <div className="container mx-auto py-12">
-      <h1 className="text-3xl font-bold mb-8">Welcome, {user.name || user.email}</h1>
+  // Quick stats
+  const totalTests = tests.length;
+  const avgScore = totalTests > 0 
+    ? Math.round(tests.reduce((sum, t) => sum + (t.score || 0), 0) / totalTests) 
+    : 0;
+  const highestPercentile = totalTests > 0 
+    ? Math.max(...tests.map(t => t.percentile || 0)) 
+    : 0;
 
+  return (
+    <div className="container mx-auto py-12 px-4">
+      {/* Hero */}
+      <div className="flex items-center justify-between mb-12">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight">
+            Welcome back, {user.name || user.email?.split("@")[0]}
+          </h1>
+          <p className="text-muted-foreground mt-2 text-lg">
+            Track your IQ progress • Improve every test
+          </p>
+        </div>
+        <Button asChild size="lg" className="gap-2 text-base font-semibold">
+          <Link href="/test">
+            <Play className="w-5 h-5" />
+            Start New Test
+          </Link>
+        </Button>
+      </div>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Tests</CardTitle>
+            <Trophy className="w-5 h-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{totalTests}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+            <TrendingUp className="w-5 h-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{avgScore}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Best Percentile</CardTitle>
+            <Target className="w-5 h-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{highestPercentile}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Score Trend Chart */}
+      {totalTests > 1 && (
+        <Card className="mb-12">
+          <CardHeader>
+            <CardTitle>Your Score Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScoreTrendChart tests={tests} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Tests */}
       <Card>
-        <CardHeader>
-          <CardTitle>Your Past Results</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Recent Tests</CardTitle>
+          {totalTests > 0 && (
+            <Button variant="outline" asChild>
+              <Link href="/results">View All Results</Link>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {tests.length === 0 ? (
-            <p>No tests taken yet. <Link href="/test" className="text-primary underline">Start a new test</Link></p>
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">You haven&apos;t taken any tests yet.</p>
+              <Button asChild size="lg">
+                <Link href="/test">Take Your First Test</Link>
+              </Button>
+            </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {tests.map((test) => (
-                <div key={test.id} className="border p-6 rounded-lg">
-                  <div className="flex justify-between items-center">
+                <div
+                  key={test.id}
+                  className="flex items-center justify-between p-6 border rounded-xl hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Trophy className="w-6 h-6 text-primary" />
+                    </div>
                     <div>
-                      <p className="text-xl font-bold">{test.score}</p>
+                      <p className="font-semibold text-lg">{test.score} points</p>
                       <p className="text-sm text-muted-foreground">
                         {test.category} • {new Date(test.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <Button asChild variant="outline">
-                      <Link href={`/results?score=${test.score}&percentile=${test.percentile}&category=${test.category}`}>
-                        View Details
-                      </Link>
-                    </Button>
                   </div>
+                  <Button variant="outline" asChild>
+                    <Link href={`/results?score=${test.score}&percentile=${test.percentile}&category=${test.category}`}>
+                      View Details
+                    </Link>
+                  </Button>
                 </div>
               ))}
             </div>
