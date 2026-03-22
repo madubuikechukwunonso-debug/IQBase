@@ -32,7 +32,6 @@ const WARNING_TIME = 10 // seconds
 export default function TestPage() {
   const sessionData = useSession()
   const session = sessionData?.data ?? null
-  const status = sessionData?.status ?? "loading"   // ← safe
   const router = useRouter()
 
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
@@ -44,30 +43,17 @@ export default function TestPage() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
 
-  // SAFE REDIRECT — waits for session to load (fixes the bug)
+  // RELIABLE REDIRECT (fixes the logged-in → register bug)
   useEffect(() => {
     if (testState !== 'completed' || !result) return
-    if (status === "loading") return
 
-    if (status === "authenticated") {
+    if (sessionData.status === "authenticated" || session?.user) {
       const resultString = encodeURIComponent(JSON.stringify(result))
       router.push(`/pricing?result=${resultString}`)
     } else {
       router.push(`/register?callbackUrl=/test`)
     }
-  }, [testState, result, status, router])
-
-  // Loading screen while NextAuth checks login
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Preparing your IQ test...</p>
-        </div>
-      </div>
-    )
-  }
+  }, [testState, result, sessionData.status, session, router])
 
   // Initialize test
   const startTest = useCallback(() => {
