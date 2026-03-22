@@ -13,14 +13,12 @@ model User {
   name           String?
   hashedPassword String?
   emailVerified  DateTime?
-  role           UserRole  @default(USER)   // ← NEW: for admin access
+  role           UserRole  @default(USER)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  // NextAuth relations
   accounts Account[]
   sessions Session[]
-  // Your existing relations
   tests    Test[]
   payments Payment[]
 }
@@ -81,6 +79,8 @@ model Test {
   speedScore      Int?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  payments Payment[]   // ← NEW: reverse relation so stats route can check paid status
 }
 
 model Answer {
@@ -101,6 +101,7 @@ model Payment {
   userId          String?
   user            User?         @relation(fields: [userId], references: [id])
   testId          String?
+  test            Test?         @relation(fields: [testId], references: [id])
   stripePaymentId String        @unique
   amount          Int
   currency        String        @default("usd")
@@ -112,14 +113,14 @@ model Payment {
 
 model Question {
   id            String   @id @default(cuid())
-  type          String   // logical, pattern, numerical, verbal, graphical
+  type          String
   difficulty    Int
   question      String
   options       String[]
   correctAnswer Int
   explanation   String
   timeLimit     Int
-  imageUrl      String?  // ← NEW: for graphical questions
+  imageUrl      String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
