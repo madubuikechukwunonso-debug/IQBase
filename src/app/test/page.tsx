@@ -32,6 +32,7 @@ const WARNING_TIME = 10 // seconds
 export default function TestPage() {
   const sessionData = useSession()
   const session = sessionData?.data ?? null
+  const status = sessionData?.status ?? "loading"   // ← safe fix
   const router = useRouter()
 
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
@@ -43,17 +44,18 @@ export default function TestPage() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
 
-  // RELIABLE REDIRECT (fixes the logged-in → register bug)
+  // RELIABLE REDIRECT — waits for session (fixes logged-in → register bug)
   useEffect(() => {
     if (testState !== 'completed' || !result) return
+    if (status === "loading") return
 
-    if (sessionData.status === "authenticated" || session?.user) {
+    if (status === "authenticated") {
       const resultString = encodeURIComponent(JSON.stringify(result))
       router.push(`/pricing?result=${resultString}`)
     } else {
       router.push(`/register?callbackUrl=/test`)
     }
-  }, [testState, result, sessionData.status, session, router])
+  }, [testState, result, status, router])
 
   // Initialize test
   const startTest = useCallback(() => {
