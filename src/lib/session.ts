@@ -1,12 +1,24 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import type { User } from "next-auth";
+// src/lib/session.ts
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import prisma from "@/lib/prisma"
 
-export async function getSession() {
-  return await getServerSession(authOptions);
-}
+export async function getUser() {
+  const session = await getServerSession(authOptions)
 
-export async function getUser(): Promise<User | null> {
-  const session = await getSession();
-  return session?.user ?? null;
+  if (!session?.user?.id) {
+    return null
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,        // ← NEW (this fixes the TypeScript error)
+    },
+  })
+
+  return user
 }
