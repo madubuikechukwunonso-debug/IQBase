@@ -1,20 +1,18 @@
 // src/app/register/page.tsx
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "next-auth/react";   // ← Added for social login (matches login page exactly)
 
 export default function RegisterPage() {
   const router = useRouter();
-
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
-
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,22 +25,18 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     // Basic client-side validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters long");
       return;
     }
-
     setLoading(true);
     setError(null);
     setSuccess(null);
-
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -55,27 +49,15 @@ export default function RegisterPage() {
           password: formData.password,
         }),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         setError(data.error || "Registration failed. Please try again.");
         return;
       }
-
       setSuccess("Account created successfully! Redirecting to login...");
-      
-      // Optional: auto sign-in after register
-      // await signIn("credentials", {
-      //   email: formData.email,
-      //   password: formData.password,
-      //   redirect: false,
-      // });
-
       setTimeout(() => {
         router.push("/login");
       }, 2000);
-
     } catch (err) {
       console.error("Registration error:", err);
       setError("An unexpected error occurred. Please try again later.");
@@ -87,6 +69,15 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
+        
+        {/* APP LOGO — added exactly as requested */}
+        <div className="flex justify-center">
+          <div className="bg-indigo-600 text-white text-5xl font-black px-8 py-4 rounded-3xl shadow-lg flex items-center gap-3 tracking-tighter">
+            IQ
+            <span className="text-yellow-300 text-4xl">Base</span>
+          </div>
+        </div>
+
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             Create your account
@@ -121,7 +112,6 @@ export default function RegisterPage() {
                 placeholder="Full name"
               />
             </div>
-
             {/* Email field */}
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -139,7 +129,6 @@ export default function RegisterPage() {
                 placeholder="Email address"
               />
             </div>
-
             {/* Password field */}
             <div>
               <label htmlFor="password" className="sr-only">
@@ -157,7 +146,6 @@ export default function RegisterPage() {
                 placeholder="Password"
               />
             </div>
-
             {/* Confirm Password */}
             <div>
               <label htmlFor="confirm-password" className="sr-only">
@@ -183,7 +171,6 @@ export default function RegisterPage() {
               {error}
             </div>
           )}
-
           {success && (
             <div className="text-green-600 dark:text-green-400 text-sm text-center">
               {success}
@@ -230,6 +217,49 @@ export default function RegisterPage() {
             </button>
           </div>
         </form>
+
+        {/* SOCIAL LOGIN BUTTONS — exactly like the sign-in page */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-gray-50 dark:bg-gray-900 px-2 text-gray-500">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-3">
+            {/* Gmail (Google) */}
+            <button
+              type="button"
+              onClick={() => signIn("google", { callbackUrl: "/" })}
+              className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              Gmail
+            </button>
+
+            {/* Facebook */}
+            <button
+              type="button"
+              onClick={() => signIn("facebook", { callbackUrl: "/" })}
+              className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              Facebook
+            </button>
+
+            {/* X (Twitter) */}
+            <button
+              type="button"
+              onClick={() => signIn("twitter", { callbackUrl: "/" })}
+              className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              X
+            </button>
+          </div>
+        </div>
 
         <div className="text-center text-sm text-gray-500 dark:text-gray-400">
           By signing up, you agree to our{" "}
