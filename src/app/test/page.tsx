@@ -32,7 +32,7 @@ const WARNING_TIME = 10 // seconds
 export default function TestPage() {
   const sessionData = useSession()
   const session = sessionData?.data ?? null
-  const status = sessionData?.status ?? "loading"   // ← safe fix
+  const status = sessionData?.status ?? "loading"
   const router = useRouter()
 
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
@@ -44,7 +44,7 @@ export default function TestPage() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
 
-  // RELIABLE REDIRECT — waits for session (fixes logged-in → register bug)
+  // RELIABLE REDIRECT — waits for session to load
   useEffect(() => {
     if (testState !== 'completed' || !result) return
     if (status === "loading") return
@@ -162,10 +162,11 @@ export default function TestPage() {
     )
   }
 
-  // ==================== ACTIVE TEST WITH HIGHLIGHTING ====================
+  // ==================== ACTIVE TEST — ONLY HIGHLIGHTS WHAT USER PICKED (no correct/wrong reveal) ====================
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
   const progress = (currentIndex / questions.length) * 100
+
   return (
     <div className="p-4 max-w-3xl mx-auto">
       <div className="mb-4 flex justify-between">
@@ -180,22 +181,15 @@ export default function TestPage() {
         <CardContent className="space-y-3">
           {currentQuestion.options.map((option, index) => {
             const isSelected = selectedAnswer === index
-            const isCorrect = index === currentQuestion.correctAnswer
-            const isWrongSelected = showFeedback && isSelected && !isCorrect
+
             let buttonClass = "block w-full p-5 border-2 rounded-xl text-left text-lg font-medium transition-all duration-200"
-            if (showFeedback) {
-              if (isCorrect) {
-                buttonClass += " bg-green-100 dark:bg-green-900 border-green-600 text-green-800 dark:text-green-200"
-              } else if (isWrongSelected) {
-                buttonClass += " bg-red-100 dark:bg-red-900 border-red-600 text-red-800 dark:text-red-200"
-              } else {
-                buttonClass += " border-gray-300 dark:border-gray-700 opacity-70"
-              }
-            } else if (isSelected) {
+
+            if (isSelected) {
               buttonClass += " bg-indigo-100 dark:bg-indigo-900 border-indigo-600 text-indigo-700 dark:text-indigo-300 scale-[1.02]"
             } else {
               buttonClass += " border-gray-300 dark:border-gray-700 hover:border-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-800"
             }
+
             return (
               <button
                 key={index}
@@ -203,20 +197,18 @@ export default function TestPage() {
                 disabled={showFeedback}
                 className={buttonClass}
               >
-                <div className="flex items-center justify-between">
-                  <span>{option}</span>
-                  {showFeedback && (
-                    <>
-                      {isCorrect && <CheckCircle className="w-6 h-6 text-green-600" />}
-                      {isWrongSelected && <XCircle className="w-6 h-6 text-red-600" />}
-                    </>
-                  )}
-                </div>
+                <span>{option}</span>
               </button>
             )
           })}
         </CardContent>
       </Card>
+
+      {showFeedback && (
+        <div className="mt-6 text-center text-sm text-muted-foreground">
+          Next question loading in 1.6 seconds...
+        </div>
+      )}
     </div>
   )
 }
