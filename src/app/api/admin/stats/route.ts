@@ -1,3 +1,4 @@
+// src/app/api/admin/stats/route.ts
 import { NextResponse } from "next/server"
 import { getUser } from "@/lib/session"
 import prisma from "@/lib/prisma"
@@ -14,7 +15,7 @@ export async function GET() {
     totalRevenue,
     totalQuestions,
     activeQuestions,
-    recentTests
+    recentTestsRaw
   ] = await Promise.all([
     prisma.user.count(),
     prisma.test.count(),
@@ -24,9 +25,21 @@ export async function GET() {
     prisma.test.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
-      include: { user: true }
+      include: {
+        user: true,
+        payments: true   // ← FIXED: now includes payments
+      }
     })
   ])
+
+  const recentTests = recentTestsRaw.map(t => ({
+    id: t.id,
+    email: t.user?.email || "Anonymous",
+    score: t.score,
+    date: t.createdAt.toISOString().split("T")[0],
+    status: t.status,
+    paid: t.payments.length > 0
+  }))
 
   return NextResponse.json({
     stats: {
@@ -36,13 +49,6 @@ export async function GET() {
       totalQuestions,
       activeQuestions,
     },
-    recentTests: recentTests.map(t => ({
-      id: t.id,
-      email: t.user?.email || "Anonymous",
-      score: t.score,
-      date: t.createdAt.toISOString().split("T")[0],
-      status: t.status,
-      paid: !!t.payments?.length
-    }))
+    recentTests
   })
 }
