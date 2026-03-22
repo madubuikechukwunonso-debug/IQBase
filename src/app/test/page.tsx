@@ -1,7 +1,8 @@
 // src/app/test/page.tsx
 "use client"
 
-export const dynamic = 'force-dynamic'   // ← This line MUST come AFTER "use client"
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 import { useState, useEffect, useCallback } from "react"
 import { Brain, Timer, Trophy, CheckCircle, XCircle } from "lucide-react"
