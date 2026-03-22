@@ -27,7 +27,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: {
         user: true,
-        payments: true   // ← FIXED: now includes payments
+        payments: true   // ← now works because of the schema update above
       }
     })
   ])
