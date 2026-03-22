@@ -31,9 +31,7 @@ const QUESTION_COUNT = 20
 const WARNING_TIME = 10 // seconds
 
 export default function TestPage() {
-  const sessionData = useSession()
-  const session = sessionData?.data ?? null
-
+  const { data: session, status } = useSession()   // ← FIXED: proper status
   const router = useRouter()
 
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
@@ -44,6 +42,18 @@ export default function TestPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
+
+  // ==================== AUTO REDIRECT AFTER COMPLETION (NOW FIXED) ====================
+  useEffect(() => {
+    if (testState !== 'completed' || !result || status === "loading") return
+
+    if (status === "authenticated") {
+      const resultString = encodeURIComponent(JSON.stringify(result))
+      router.push(`/pricing?result=${resultString}`)
+    } else {
+      router.push(`/register?callbackUrl=/test`)
+    }
+  }, [testState, result, status, router])
 
   // Initialize test
   const startTest = useCallback(() => {
@@ -104,20 +114,10 @@ export default function TestPage() {
         setSelectedAnswer(null)
         setShowFeedback(false)
       } else {
-        // Test completed
+        // Test completed → just set state (redirect happens in useEffect above)
         const testResult = calculateScore(updatedAnswers, questions)
         setResult(testResult)
         setTestState('completed')
-
-        // Safe client-side redirect
-        if (typeof window !== "undefined") {
-          if (!session?.user) {
-            router.push(`/register?callbackUrl=/test`)
-          } else {
-            const resultString = encodeURIComponent(JSON.stringify(testResult))
-            router.push(`/pricing?result=${resultString}`)
-          }
-        }
       }
     }, 1500)
   }
@@ -156,7 +156,7 @@ export default function TestPage() {
     )
   }
 
-  // ==================== COMPLETED ====================
+  // ==================== COMPLETED (fallback UI — button still works) ====================
   if (testState === 'completed' && result) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
