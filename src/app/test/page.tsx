@@ -1,22 +1,37 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
-import { Brain, Timer, Trophy, CheckCircle, XCircle } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import {
+  Brain,
+  Clock,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Trophy,
+  Timer,
+  Lock
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
 import { questions as allQuestions } from "@/data/questions"
 import { calculateScore } from "@/lib/scoring"
 import { Answer, Question, TestResult } from "@/types"
 import { shuffleArray } from "@/lib/utils"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 
 const QUESTION_COUNT = 20
+const WARNING_TIME = 10 // seconds
 
 export default function TestPage() {
-  const { data: session, status } = useSession()
+  const sessionData = useSession()
+  const session = sessionData?.data ?? null
   const router = useRouter()
 
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
@@ -27,19 +42,6 @@ export default function TestPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
-
-  // RELIABLE REDIRECT — waits for session to be fully loaded
-  useEffect(() => {
-    if (testState !== 'completed' || !result) return
-    if (status === "loading") return
-
-    if (status === "authenticated") {
-      const resultString = encodeURIComponent(JSON.stringify(result))
-      router.push(`/pricing?result=${resultString}`)
-    } else {
-      router.push("/register?callbackUrl=/test")
-    }
-  }, [testState, result, status, router])
 
   // Initialize test
   const startTest = useCallback(() => {
@@ -53,7 +55,7 @@ export default function TestPage() {
     setShowFeedback(false)
   }, [])
 
-  // Timer
+  // Timer effect
   useEffect(() => {
     if (testState !== 'testing' || showFeedback) return
     const timer = setInterval(() => {
@@ -68,12 +70,14 @@ export default function TestPage() {
     return () => clearInterval(timer)
   }, [testState, currentIndex, showFeedback])
 
+  // Handle answer selection
   const handleAnswerSelect = (index: number) => {
     if (showFeedback) return
     setSelectedAnswer(index)
     handleAnswerSubmit(index)
   }
 
+  // Handle answer submission
   const handleAnswerSubmit = (answerIndex: number) => {
     const currentQuestion = questions[currentIndex]
     if (!currentQuestion) return
@@ -98,9 +102,20 @@ export default function TestPage() {
         setSelectedAnswer(null)
         setShowFeedback(false)
       } else {
+        // Test completed
         const testResult = calculateScore(updatedAnswers, questions)
         setResult(testResult)
         setTestState('completed')
+
+        // Safe client-side redirect (exactly like your old working code)
+        if (typeof window !== "undefined") {
+          if (!session?.user) {
+            router.push(`/register?callbackUrl=/test`)
+          } else {
+            const resultString = encodeURIComponent(JSON.stringify(testResult))
+            router.push(`/pricing?result=${resultString}`)
+          }
+        }
       }
     }, 1600)
   }
@@ -108,16 +123,15 @@ export default function TestPage() {
   // ==================== INTRO ====================
   if (testState === 'intro') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
-        <Card className="max-w-md w-full">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card>
           <CardHeader className="text-center">
-            <Brain className="w-16 h-16 mx-auto mb-6 text-primary" />
-            <CardTitle className="text-3xl">IQBase Cognitive Assessment</CardTitle>
-            <p className="text-muted-foreground mt-2">20 questions • ~15 minutes</p>
+            <Brain className="w-10 h-10 mx-auto mb-4" />
+            <CardTitle>Cognitive Assessment</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button onClick={startTest} size="lg" className="w-full text-lg">
-              Start the Test
+            <Button onClick={startTest} className="w-full">
+              Start Assessment
             </Button>
           </CardContent>
         </Card>
@@ -128,22 +142,20 @@ export default function TestPage() {
   // ==================== COMPLETED ====================
   if (testState === 'completed' && result) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
-        <Card className="max-w-md w-full text-center">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="text-center">
           <CardHeader>
-            <Trophy className="w-20 h-20 mx-auto mb-4 text-yellow-500" />
-            <CardTitle className="text-3xl">Test Complete!</CardTitle>
+            <Trophy className="w-10 h-10 mx-auto mb-4" />
+            <CardTitle>Assessment Complete</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => {
                 const resultString = encodeURIComponent(JSON.stringify(result))
                 router.push(`/pricing?result=${resultString}`)
               }}
-              size="lg"
-              className="w-full"
             >
-              Unlock Full Results →
+              Unlock Results
             </Button>
           </CardContent>
         </Card>
@@ -155,45 +167,41 @@ export default function TestPage() {
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
 
-  const progress = ((currentIndex + 1) / questions.length) * 100
+  const progress = (currentIndex / questions.length) * 100
 
   return (
-    <div className="max-w-3xl mx-auto p-6 pt-12 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
-        <div className="text-lg font-medium">Question {currentIndex + 1} of {questions.length}</div>
-        <div className="flex items-center gap-2 font-mono text-xl font-semibold">
-          <Timer className="w-5 h-5" /> {timeLeft}s
-        </div>
+    <div className="p-4 max-w-3xl mx-auto">
+      <div className="mb-4 flex justify-between">
+        <span>Question {currentIndex + 1}</span>
+        <span>{timeLeft}s</span>
       </div>
 
-      <Progress value={progress} className="mb-10 h-2" />
+      <Progress value={progress} />
 
-      <Card className="shadow-xl">
+      <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="text-2xl leading-relaxed text-center">
-            {currentQuestion.question}
-          </CardTitle>
+          <CardTitle>{currentQuestion.question}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 pt-2">
+        <CardContent className="space-y-3">
           {currentQuestion.options.map((option, index) => {
             const isSelected = selectedAnswer === index
             const isCorrect = index === currentQuestion.correctAnswer
             const isWrongSelected = showFeedback && isSelected && !isCorrect
 
-            let buttonClass = "w-full text-left p-6 rounded-3xl border-2 text-lg font-medium transition-all duration-200"
+            let buttonClass = "block w-full p-5 border-2 rounded-xl text-left text-lg font-medium transition-all duration-200"
 
             if (showFeedback) {
               if (isCorrect) {
-                buttonClass += " bg-green-100 dark:bg-green-900 border-green-500 text-green-700 dark:text-green-300"
+                buttonClass += " bg-green-100 dark:bg-green-900 border-green-600 text-green-800 dark:text-green-200"
               } else if (isWrongSelected) {
-                buttonClass += " bg-red-100 dark:bg-red-900 border-red-500 text-red-700 dark:text-red-300"
+                buttonClass += " bg-red-100 dark:bg-red-900 border-red-600 text-red-800 dark:text-red-200"
               } else {
-                buttonClass += " border-gray-200 dark:border-gray-700 opacity-60"
+                buttonClass += " border-gray-300 dark:border-gray-700 opacity-70"
               }
             } else if (isSelected) {
               buttonClass += " bg-indigo-100 dark:bg-indigo-900 border-indigo-600 text-indigo-700 dark:text-indigo-300 scale-[1.02]"
             } else {
-              buttonClass += " border-gray-200 dark:border-gray-700 hover:border-indigo-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              buttonClass += " border-gray-300 dark:border-gray-700 hover:border-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-800"
             }
 
             return (
