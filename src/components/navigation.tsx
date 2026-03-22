@@ -59,12 +59,18 @@ export function Navigation() {
               ))}
             </nav>
 
-            {/* Desktop Actions */}
+            {/* Desktop Actions - Added Sign up button */}
             <div className="hidden md:flex items-center gap-4">
               <ModeToggle />
               <Link href="/login">
                 <Button variant="outline" size="sm">
                   Sign in
+                </Button>
+              </Link>
+              {/* NEW: Register / Sign up button (prominent CTA style matching "Start Test") */}
+              <Link href="/register">
+                <Button variant="gradient" size="sm">
+                  Sign up
                 </Button>
               </Link>
               <Link href="/test">
@@ -93,7 +99,7 @@ export function Navigation() {
         </div>
       </motion.header>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Added Sign up button */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -114,11 +120,16 @@ export function Navigation() {
                   {link.label}
                 </Link>
               ))}
-
               <div className="flex flex-col gap-4 mt-6">
                 <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full">
                     Sign in
+                  </Button>
+                </Link>
+                {/* NEW: Register / Sign up button (full-width on mobile) */}
+                <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="gradient" className="w-full">
+                    Sign up
                   </Button>
                 </Link>
                 <Link href="/test" onClick={() => setIsMobileMenuOpen(false)}>
