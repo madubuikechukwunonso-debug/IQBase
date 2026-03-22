@@ -1,24 +1,17 @@
 "use client"
 import { useState } from "react"
-import { motion } from "framer-motion"
 import { Brain, ArrowLeft, Plus, Trash2, Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-
-type QuestionType = "logical" | "pattern" | "numerical" | "verbal" | "graphical"
 
 export default function NewQuestionPage() {
   const router = useRouter()
 
   const [form, setForm] = useState({
-    type: "logical" as QuestionType,
+    type: "logical",
     difficulty: 3,
     question: "",
     options: ["", "", "", ""],
@@ -61,14 +54,8 @@ export default function NewQuestionPage() {
     setLoading(true)
     setError("")
 
-    // Basic validation
     if (!form.question.trim()) {
       setError("Question text is required")
-      setLoading(false)
-      return
-    }
-    if (form.options.some(opt => !opt.trim())) {
-      setError("All options must be filled")
       setLoading(false)
       return
     }
@@ -90,15 +77,10 @@ export default function NewQuestionPage() {
         }),
       })
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to create question")
-      }
+      if (!res.ok) throw new Error("Failed to create question")
 
       setSuccess(true)
-      setTimeout(() => {
-        router.push("/admin")
-      }, 1500)
+      setTimeout(() => router.push("/admin"), 1500)
     } catch (err: any) {
       setError(err.message || "Something went wrong")
     } finally {
@@ -108,7 +90,6 @@ export default function NewQuestionPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted pb-12">
-      {/* Header */}
       <header className="border-b border-border bg-background/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/admin" className="flex items-center gap-2 hover:opacity-80 transition">
@@ -122,11 +103,11 @@ export default function NewQuestionPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-3xl">Create New Question</CardTitle>
-            <p className="text-muted-foreground">Add to the database — supports graphical questions with images</p>
+            <p className="text-muted-foreground">Add to database — supports graphical questions</p>
           </CardHeader>
 
           <CardContent>
@@ -134,50 +115,42 @@ export default function NewQuestionPage() {
               {/* Type & Difficulty */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label>Question Type</Label>
-                  <Select 
-                    value={form.type} 
-                    onValueChange={(value: QuestionType) => setForm({ ...form, type: value })}
+                  <label className="text-sm font-medium block mb-1">Question Type</label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                    className="w-full border border-input bg-background px-3 py-2 rounded-md"
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="logical">Logical</SelectItem>
-                      <SelectItem value="pattern">Pattern</SelectItem>
-                      <SelectItem value="numerical">Numerical</SelectItem>
-                      <SelectItem value="verbal">Verbal</SelectItem>
-                      <SelectItem value="graphical">Graphical (with image)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <option value="logical">Logical</option>
+                    <option value="pattern">Pattern</option>
+                    <option value="numerical">Numerical</option>
+                    <option value="verbal">Verbal</option>
+                    <option value="graphical">Graphical (with image)</option>
+                  </select>
                 </div>
 
                 <div>
-                  <Label>Difficulty (1-5)</Label>
-                  <Select 
-                    value={String(form.difficulty)} 
-                    onValueChange={(v) => setForm({ ...form, difficulty: Number(v) })}
+                  <label className="text-sm font-medium block mb-1">Difficulty (1-5)</label>
+                  <select
+                    value={form.difficulty}
+                    onChange={(e) => setForm({ ...form, difficulty: Number(e.target.value) })}
+                    className="w-full border border-input bg-background px-3 py-2 rounded-md"
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1,2,3,4,5].map(n => (
-                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {[1,2,3,4,5].map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               {/* Question Text */}
               <div>
-                <Label>Question Text</Label>
-                <Textarea
+                <label className="text-sm font-medium block mb-1">Question Text</label>
+                <textarea
                   value={form.question}
                   onChange={(e) => setForm({ ...form, question: e.target.value })}
-                  placeholder="What is the next number in the sequence: 2, 4, 8, 16, ...?"
-                  className="min-h-[100px]"
+                  placeholder="What comes next in the sequence?"
+                  className="w-full min-h-[100px] border border-input bg-background px-3 py-2 rounded-md"
                   required
                 />
               </div>
@@ -185,7 +158,7 @@ export default function NewQuestionPage() {
               {/* Options */}
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <Label>Answer Options</Label>
+                  <label className="text-sm font-medium">Answer Options</label>
                   <Button type="button" variant="outline" size="sm" onClick={addOption}>
                     <Plus className="w-4 h-4 mr-1" /> Add Option
                   </Button>
@@ -213,41 +186,31 @@ export default function NewQuestionPage() {
                 </div>
               </div>
 
-              {/* Correct Answer */}
+              {/* Correct Answer Index */}
               <div>
-                <Label>Correct Answer (index)</Label>
-                <Select
-                  value={String(form.correctAnswer)}
-                  onValueChange={(v) => setForm({ ...form, correctAnswer: Number(v) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {form.options.map((_, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        Option {i + 1}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Explanation */}
-              <div>
-                <Label>Explanation</Label>
-                <Textarea
-                  value={form.explanation}
-                  onChange={(e) => setForm({ ...form, explanation: e.target.value })}
-                  placeholder="Explain why this is the correct answer..."
-                  className="min-h-[80px]"
+                <label className="text-sm font-medium block mb-1">Correct Answer (index starting from 0)</label>
+                <Input
+                  type="number"
+                  value={form.correctAnswer}
+                  onChange={(e) => setForm({ ...form, correctAnswer: Number(e.target.value) })}
+                  min={0}
+                  max={form.options.length - 1}
                 />
               </div>
 
-              {/* Time Limit & Active */}
+              {/* Explanation & Time Limit */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label>Time Limit (seconds)</Label>
+                  <label className="text-sm font-medium block mb-1">Explanation</label>
+                  <textarea
+                    value={form.explanation}
+                    onChange={(e) => setForm({ ...form, explanation: e.target.value })}
+                    placeholder="Why is this the correct answer?"
+                    className="w-full min-h-[80px] border border-input bg-background px-3 py-2 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium block mb-1">Time Limit (seconds)</label>
                   <Input
                     type="number"
                     value={form.timeLimit}
@@ -256,19 +219,12 @@ export default function NewQuestionPage() {
                     max={120}
                   />
                 </div>
-                <div className="flex items-center gap-3 pt-8">
-                  <Switch
-                    checked={form.isActive}
-                    onCheckedChange={(checked) => setForm({ ...form, isActive: checked })}
-                  />
-                  <Label>Active (visible in tests)</Label>
-                </div>
               </div>
 
               {/* Graphical Image URL */}
               {form.type === "graphical" && (
-                <div className="space-y-4">
-                  <Label>Image URL (for graphical question)</Label>
+                <div>
+                  <label className="text-sm font-medium block mb-1">Image URL (for graphical question)</label>
                   <Input
                     type="url"
                     value={form.imageUrl}
@@ -277,25 +233,17 @@ export default function NewQuestionPage() {
                   />
                   {form.imageUrl && (
                     <div className="mt-4 border rounded-xl overflow-hidden bg-muted p-4">
-                      <p className="text-sm text-muted-foreground mb-2">Image Preview</p>
-                      <img
-                        src={form.imageUrl}
-                        alt="Preview"
-                        className="max-h-64 mx-auto rounded-lg shadow-md"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://placehold.co/600x400?text=Invalid+Image+URL"
-                        }}
-                      />
+                      <img src={form.imageUrl} alt="Preview" className="max-h-64 mx-auto rounded-lg" />
                     </div>
                   )}
                 </div>
               )}
 
               {error && <p className="text-red-500 text-center">{error}</p>}
-              {success && <p className="text-green-600 text-center font-medium">✅ Question created successfully! Redirecting...</p>}
+              {success && <p className="text-green-600 text-center font-medium">✅ Question saved successfully!</p>}
 
               <Button type="submit" size="lg" className="w-full" disabled={loading}>
-                {loading ? "Creating Question..." : "Create & Save to Database"}
+                {loading ? "Saving to Database..." : "Create Question"}
               </Button>
             </form>
           </CardContent>
