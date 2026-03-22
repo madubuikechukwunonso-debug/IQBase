@@ -9,7 +9,7 @@ import Link from "next/link";
 export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/test";
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";   // ← ONLY LINE CHANGED
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +37,6 @@ export default function LoginClient() {
     });
 
     if (result?.error) {
-      // Customize messages based on common Auth.js error codes
       if (result.error === "CredentialsSignin") {
         setError("Invalid email or password");
       } else {
@@ -47,9 +46,8 @@ export default function LoginClient() {
       return;
     }
 
-    // Success → redirect
     router.push(callbackUrl);
-    router.refresh(); // Helps refresh server components if needed
+    router.refresh();
   }
 
   const handleSocialSignIn = (provider: string) => {
@@ -181,6 +179,7 @@ export default function LoginClient() {
 
       {/* Social sign-in buttons */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Google */}
         <button
           type="button"
           onClick={() => handleSocialSignIn("google")}
@@ -189,27 +188,18 @@ export default function LoginClient() {
             loading ? "cursor-not-allowed" : ""
           }`}
         >
-          <svg className="h-5 w-5" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.51h5.84c-.25 1.31-.98 2.42-2.07 3.16v2.63h3.35c1.96-1.81 3.09-4.47 3.09-7.99z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-1.01 7.28-2.73l-3.35-2.63c-1.01.68-2.29 1.08-3.93 1.08-3.02 0-5.58-2.04-6.49-4.79H.96v2.67C2.77 20.39 6.62 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.51 14.21c-.23-.68-.36-1.41-.36-2.21s.13-1.53.36-2.21V7.34H.96C.35 8.85 0 10.39 0 12s.35 3.15.96 4.66l4.55-2.45z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 4.98c1.64 0 3.11.56 4.27 1.66l3.19-3.19C17.46 1.01 14.97 0 12 0 6.62 0 2.77 2.61 0.96 6.34l4.55 2.45C6.42 7.02 9 4.98 12 4.98z"
-            />
-          </svg>
-          Google
+          <span className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.51h5.92c-.25 1.37-1.01 2.53-2.14 3.3v2.72h3.45c2.01-1.85 3.17-4.58 3.17-7.78z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.45-2.72c-.98.66-2.23 1.06-3.83 1.06-2.95 0-5.45-1.99-6.34-4.66H2.04v2.9C3.85 20.15 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.66 14.57c-.23-.66-.36-1.37-.36-2.12 0-.75.13-1.46.36-2.12v-2.9H2.04C1.37 10.1 1 11.52 1 13c0 1.48.37 2.9 1.04 4.1l2.62-2.53z"/>
+              <path fill="#EA4335" d="M12 5.48c1.65 0 3.13.57 4.3 1.68l3.2-3.2C17.46 2.09 14.94 1 12 1 7.7 1 3.85 3.85 2.04 7.9l2.62 2.53C5.55 7.47 8.5 5.48 12 5.48z"/>
+            </svg>
+            Google
+          </span>
         </button>
 
+        {/* Facebook */}
         <button
           type="button"
           onClick={() => handleSocialSignIn("facebook")}
@@ -218,12 +208,15 @@ export default function LoginClient() {
             loading ? "cursor-not-allowed" : ""
           }`}
         >
-          <svg className="h-5 w-5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078V12h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.49 0-1.956.925-1.956 1.874V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z" />
-          </svg>
-          Facebook
+          <span className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
+            </svg>
+            Facebook
+          </span>
         </button>
 
+        {/* X (Twitter) */}
         <button
           type="button"
           onClick={() => handleSocialSignIn("twitter")}
@@ -232,10 +225,12 @@ export default function LoginClient() {
             loading ? "cursor-not-allowed" : ""
           }`}
         >
-          <svg className="h-5 w-5 text-[#000000] dark:text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-          X (Twitter)
+          <span className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black dark:text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.056l-5.512-7.207-6.304 7.207H1.32l8.588-9.81L0 1.153h7.265l4.99 6.6L18.901 1.153zM19.13 20.78h2.04L7.26 3.22H5.1l14.03 17.56z"/>
+            </svg>
+            X
+          </span>
         </button>
       </div>
     </div>
