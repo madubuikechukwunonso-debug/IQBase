@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Brain, ArrowLeft, Plus, Trash2, Image as ImageIcon } from "lucide-react"
+import { Brain, ArrowLeft, Plus, Trash2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,9 +23,55 @@ export default function NewQuestionPage() {
   })
 
   const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
 
+  // ===================== AI GENERATION =====================
+  const generateWithAI = async () => {
+    setGenerating(true)
+    setError("")
+
+    try {
+      const res = await fetch("/api/admin/generate-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "Create a new challenging IQ question" }),
+      })
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        fullText += decoder.decode(value, { stream: true })
+      }
+
+      // Parse the final JSON from the stream
+      const aiData = JSON.parse(fullText.trim())
+
+      setForm({
+        type: aiData.type || "logical",
+        difficulty: aiData.difficulty || 3,
+        question: aiData.question || "",
+        options: aiData.options || ["", "", "", ""],
+        correctAnswer: aiData.correctAnswer || 0,
+        explanation: aiData.explanation || "",
+        timeLimit: aiData.timeLimit || 30,
+        imageUrl: aiData.imageUrl || "",
+        isActive: true,
+      })
+    } catch (err: any) {
+      setError("AI generation failed. Please try again.")
+      console.error(err)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // ===================== FORM HANDLERS =====================
   const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...form.options]
     newOptions[index] = value
@@ -41,10 +87,10 @@ export default function NewQuestionPage() {
   const removeOption = (index: number) => {
     if (form.options.length > 2) {
       const newOptions = form.options.filter((_, i) => i !== index)
-      setForm({ 
-        ...form, 
+      setForm({
+        ...form,
         options: newOptions,
-        correctAnswer: Math.min(form.correctAnswer, newOptions.length - 1)
+        correctAnswer: Math.min(form.correctAnswer, newOptions.length - 1),
       })
     }
   }
@@ -68,7 +114,7 @@ export default function NewQuestionPage() {
           type: form.type,
           difficulty: Number(form.difficulty),
           question: form.question.trim(),
-          options: form.options.map(opt => opt.trim()),
+          options: form.options.map((opt) => opt.trim()),
           correctAnswer: Number(form.correctAnswer),
           explanation: form.explanation.trim(),
           timeLimit: Number(form.timeLimit),
@@ -112,6 +158,17 @@ export default function NewQuestionPage() {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
+              {/* AI Button */}
+              <Button
+                type="button"
+                onClick={generateWithAI}
+                disabled={generating}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              >
+                <Sparkles className="w-5 h-5 mr-2" />
+                {generating ? "AI is thinking..." : "✨ Generate with AI"}
+              </Button>
+
               {/* Type & Difficulty */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -136,8 +193,10 @@ export default function NewQuestionPage() {
                     onChange={(e) => setForm({ ...form, difficulty: Number(e.target.value) })}
                     className="w-full border border-input bg-background px-3 py-2 rounded-md"
                   >
-                    {[1,2,3,4,5].map(n => (
-                      <option key={n} value={n}>{n}</option>
+                    {[1,2,3,4,5].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
                     ))}
                   </select>
                 </div>
