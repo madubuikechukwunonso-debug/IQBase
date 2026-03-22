@@ -1,5 +1,7 @@
-export const dynamic = 'force-dynamic'
+// src/app/test/page.tsx
 "use client"
+
+export const dynamic = 'force-dynamic'   // ← This line MUST come AFTER "use client"
 
 import { useState, useEffect, useCallback } from "react"
 import { Brain, Timer, Trophy, CheckCircle, XCircle } from "lucide-react"
@@ -164,7 +166,7 @@ export default function TestPage() {
     )
   }
 
-  // ==================== ACTIVE TEST ====================
+  // ==================== ACTIVE TEST (with beautiful answer highlighting) ====================
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
 
