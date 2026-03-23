@@ -1,10 +1,18 @@
 "use client"
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Brain, Menu, X } from "lucide-react"
+import { Brain, Menu, X, LogOut, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "./mode-toggle"
 import Link from "next/link"
+import { useSession, signOut } from "next-auth/react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -13,16 +21,19 @@ const navLinks = [
 ]
 
 export function Navigation() {
+  const { data: session, status } = useSession()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50)
-    }
+    const handleScroll = () => setIsScrolled(window.scrollY > 50)
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  const handleLogout = () => {
+    signOut({ callbackUrl: "/" })
+  }
 
   return (
     <>
@@ -59,20 +70,48 @@ export function Navigation() {
               ))}
             </nav>
 
-            {/* Desktop Actions - Added Sign up button */}
+            {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-4">
               <ModeToggle />
-              <Link href="/login">
-                <Button variant="outline" size="sm">
-                  Sign in
-                </Button>
-              </Link>
-              {/* NEW: Register / Sign up button (prominent CTA style matching "Start Test") */}
-              <Link href="/register">
-                <Button variant="gradient" size="sm">
-                  Sign up
-                </Button>
-              </Link>
+
+              {status === "authenticated" && session?.user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Avatar className="cursor-pointer ring-2 ring-offset-2 ring-offset-background hover:ring-primary transition-all">
+                      <AvatarImage src={session.user.image || ""} />
+                      <AvatarFallback className="bg-primary text-white font-medium">
+                        {session.user.name?.[0] || session.user.email?.[0]?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard" className="cursor-pointer flex items-center">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer flex items-center">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <Button variant="outline" size="sm">
+                      Sign in
+                    </Button>
+                  </Link>
+                  <Link href="/register">
+                    <Button variant="gradient" size="sm">
+                      Sign up
+                    </Button>
+                  </Link>
+                </>
+              )}
+
               <Link href="/test">
                 <Button variant="gradient" size="sm">
                   Start Test
@@ -88,18 +127,14 @@ export function Navigation() {
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 aria-label="Toggle menu"
               >
-                {isMobileMenuOpen ? (
-                  <X className="w-6 h-6" />
-                ) : (
-                  <Menu className="w-6 h-6" />
-                )}
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
           </div>
         </div>
       </motion.header>
 
-      {/* Mobile Menu - Added Sign up button */}
+      {/* Mobile Menu — Updated with auth logic */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -120,22 +155,41 @@ export function Navigation() {
                   {link.label}
                 </Link>
               ))}
+
               <div className="flex flex-col gap-4 mt-6">
-                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full">
-                    Sign in
-                  </Button>
-                </Link>
-                {/* NEW: Register / Sign up button (full-width on mobile) */}
-                <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="gradient" className="w-full">
-                    Sign up
-                  </Button>
-                </Link>
+                {status === "authenticated" && session?.user ? (
+                  <>
+                    <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full justify-start">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false)
+                        signOut({ callbackUrl: "/" })
+                      }}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full">Sign in</Button>
+                    </Link>
+                    <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="gradient" className="w-full">Sign up</Button>
+                    </Link>
+                  </>
+                )}
+
                 <Link href="/test" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="gradient" className="w-full">
-                    Start Test
-                  </Button>
+                  <Button variant="gradient" className="w-full">Start Test</Button>
                 </Link>
               </div>
             </nav>
