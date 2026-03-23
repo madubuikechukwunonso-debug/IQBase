@@ -1,19 +1,14 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { ThemeProvider } from '@/components/theme-provider'
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { SessionProvider } from "next-auth/react"
+import { ThemeProvider } from "next-themes"
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: 'IQBase - Test Your Cognitive Abilities',
-  description: 'Take a scientifically-inspired cognitive assessment test. Discover your strengths in logical reasoning, pattern recognition, and numerical ability.',
-  keywords: 'IQ test, cognitive assessment, intelligence test, brain training, aptitude test',
-  openGraph: {
-    title: 'IQBase - Test Your Cognitive Abilities',
-    description: 'Discover your cognitive strengths with our scientifically-inspired assessment.',
-    type: 'website',
-  },
+  title: "IQBase - Cognitive Assessment",
+  description: "Test your IQ and unlock your potential",
 }
 
 export default function RootLayout({
@@ -24,14 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        <SessionProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            {children}
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   )
