@@ -6,13 +6,6 @@ import { Button } from "@/components/ui/button"
 import { ModeToggle } from "./mode-toggle"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -31,9 +24,7 @@ export function Navigation() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  const handleLogout = () => {
-    signOut({ callbackUrl: "/" })
-  }
+  const handleLogout = () => signOut({ callbackUrl: "/" })
 
   return (
     <>
@@ -42,9 +33,7 @@ export function Navigation() {
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled
-            ? "bg-background/80 backdrop-blur-lg shadow-sm"
-            : "bg-transparent"
+          isScrolled ? "bg-background/80 backdrop-blur-lg shadow-sm" : "bg-transparent"
         }`}
       >
         <div className="container mx-auto px-4">
@@ -75,47 +64,31 @@ export function Navigation() {
               <ModeToggle />
 
               {status === "authenticated" && session?.user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Avatar className="cursor-pointer ring-2 ring-offset-2 ring-offset-background hover:ring-primary transition-all">
-                      <AvatarImage src={session.user.image || ""} />
-                      <AvatarFallback className="bg-primary text-white font-medium">
-                        {session.user.name?.[0] || session.user.email?.[0]?.toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="cursor-pointer flex items-center">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer flex items-center">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-3">
+                  <Link href="/dashboard">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <LayoutDashboard className="w-4 h-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button variant="destructive" size="sm" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
               ) : (
                 <>
                   <Link href="/login">
-                    <Button variant="outline" size="sm">
-                      Sign in
-                    </Button>
+                    <Button variant="outline" size="sm">Sign in</Button>
                   </Link>
                   <Link href="/register">
-                    <Button variant="gradient" size="sm">
-                      Sign up
-                    </Button>
+                    <Button variant="gradient" size="sm">Sign up</Button>
                   </Link>
                 </>
               )}
 
               <Link href="/test">
-                <Button variant="gradient" size="sm">
-                  Start Test
-                </Button>
+                <Button variant="gradient" size="sm">Start Test</Button>
               </Link>
             </div>
 
@@ -134,7 +107,7 @@ export function Navigation() {
         </div>
       </motion.header>
 
-      {/* Mobile Menu — Updated with auth logic */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -160,7 +133,7 @@ export function Navigation() {
                 {status === "authenticated" && session?.user ? (
                   <>
                     <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button variant="outline" className="w-full">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         Dashboard
                       </Button>
@@ -170,7 +143,7 @@ export function Navigation() {
                       className="w-full"
                       onClick={() => {
                         setIsMobileMenuOpen(false)
-                        signOut({ callbackUrl: "/" })
+                        handleLogout()
                       }}
                     >
                       <LogOut className="mr-2 h-4 w-4" />
