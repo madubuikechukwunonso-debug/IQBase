@@ -40,6 +40,10 @@ export default async function DashboardPage() {
             Track your IQ progress • Improve every test
           </p>
         </div>
+        <Button variant="outline" onClick={() => signOut({ callbackUrl: "/" })}>
+  <LogOut className="w-4 h-4 mr-2" />
+  Logout
+</Button>
         <Button asChild size="lg" className="gap-2 text-base font-semibold">
           <Link href="/test">
             <Play className="w-5 h-5" />
