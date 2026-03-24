@@ -1,6 +1,6 @@
 "use client"
 import { useSession, signOut } from "next-auth/react"
-import { redirect } from "next/navigation"
+import { useEffect, useState } from "react"
 import { PrismaClient } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,29 +12,39 @@ const prisma = new PrismaClient()
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
+  const [tests, setTests] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Redirect if not logged in
-  if (status === "loading") return <p className="text-center py-12">Loading...</p>
-  if (!session?.user) redirect("/login")
-
-  // Fetch tests (server-side data)
-  const fetchTests = async () => {
-    return await prisma.test.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    })
+  if (status === "loading") {
+    return <div className="text-center py-12">Loading dashboard...</div>
+  }
+  if (!session?.user) {
+    window.location.href = "/login"
+    return null
   }
 
-  const tests = fetchTests() // Note: In real app, you'd use React Server Components or SWR, but for simplicity we keep it here
+  // Fetch tests on mount
+  useEffect(() => {
+    const fetchTests = async () => {
+      const data = await prisma.test.findMany({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      })
+      setTests(data)
+      setLoading(false)
+    }
+    fetchTests()
+  }, [session.user.id])
 
-  // Quick stats (this will be updated after tests load)
+  // Quick stats
   const totalTests = tests.length
   const avgScore = totalTests > 0
     ? Math.round(tests.reduce((sum, t) => sum + (t.score || 0), 0) / totalTests)
     : 0
   const highestPercentile = totalTests > 0
-    ? Math.max(...tests.map(t => t.percentile || 0))
+    ? Math.max(...tests.map((t) => t.percentile || 0))
     : 0
 
   return (
