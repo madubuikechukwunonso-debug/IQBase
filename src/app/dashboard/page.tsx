@@ -1,4 +1,6 @@
 "use client"
+export const dynamic = 'force-dynamic'
+
 import { useSession, signOut } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { PrismaClient } from "@prisma/client"
@@ -16,13 +18,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   // Redirect if not logged in
-  if (status === "loading") return <div className="text-center py-12">Loading dashboard...</div>
+  if (status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center">Loading dashboard...</div>
+  }
   if (!session?.user) {
     window.location.href = "/login"
     return null
   }
 
-  // Fetch tests client-side
+  // Fetch tests on client
   useEffect(() => {
     const fetchTests = async () => {
       const data = await prisma.test.findMany({
@@ -36,7 +40,6 @@ export default function DashboardPage() {
     fetchTests()
   }, [session.user.id])
 
-  // Quick stats
   const totalTests = tests.length
   const avgScore = totalTests > 0
     ? Math.round(tests.reduce((sum, t) => sum + (t.score || 0), 0) / totalTests)
@@ -58,7 +61,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Logout Button */}
         <Button variant="outline" onClick={() => signOut({ callbackUrl: "/" })}>
           <LogOut className="w-4 h-4 mr-2" />
           Logout
