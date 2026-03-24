@@ -16,15 +16,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   // Redirect if not logged in
-  if (status === "loading") {
-    return <div className="text-center py-12">Loading dashboard...</div>
-  }
+  if (status === "loading") return <div className="text-center py-12">Loading dashboard...</div>
   if (!session?.user) {
     window.location.href = "/login"
     return null
   }
 
-  // Fetch tests on mount
+  // Fetch tests client-side
   useEffect(() => {
     const fetchTests = async () => {
       const data = await prisma.test.findMany({
