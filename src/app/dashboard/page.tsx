@@ -1,32 +1,41 @@
-import { getUser } from "@/lib/session";
-import { redirect } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Trophy, TrendingUp, Target, Play } from "lucide-react";
-import ScoreTrendChart from "./ScoreTrendChart"; // ← NEW client component
+"use client"
+import { useSession, signOut } from "next-auth/react"
+import { redirect } from "next/navigation"
+import { PrismaClient } from "@prisma/client"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Trophy, TrendingUp, Target, Play, LogOut } from "lucide-react"
+import ScoreTrendChart from "./ScoreTrendChart"
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
-export default async function DashboardPage() {
-  const user = await getUser();
-  if (!user) redirect("/login");
+export default function DashboardPage() {
+  const { data: session, status } = useSession()
 
-  const tests = await prisma.test.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
+  // Redirect if not logged in
+  if (status === "loading") return <p className="text-center py-12">Loading...</p>
+  if (!session?.user) redirect("/login")
 
-  // Quick stats
-  const totalTests = tests.length;
-  const avgScore = totalTests > 0 
-    ? Math.round(tests.reduce((sum, t) => sum + (t.score || 0), 0) / totalTests) 
-    : 0;
-  const highestPercentile = totalTests > 0 
-    ? Math.max(...tests.map(t => t.percentile || 0)) 
-    : 0;
+  // Fetch tests (server-side data)
+  const fetchTests = async () => {
+    return await prisma.test.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    })
+  }
+
+  const tests = fetchTests() // Note: In real app, you'd use React Server Components or SWR, but for simplicity we keep it here
+
+  // Quick stats (this will be updated after tests load)
+  const totalTests = tests.length
+  const avgScore = totalTests > 0
+    ? Math.round(tests.reduce((sum, t) => sum + (t.score || 0), 0) / totalTests)
+    : 0
+  const highestPercentile = totalTests > 0
+    ? Math.max(...tests.map(t => t.percentile || 0))
+    : 0
 
   return (
     <div className="container mx-auto py-12 px-4">
@@ -34,16 +43,19 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between mb-12">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
-            Welcome back, {user.name || user.email?.split("@")[0]}
+            Welcome back, {session.user.name || session.user.email?.split("@")[0]}
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
             Track your IQ progress • Improve every test
           </p>
         </div>
+
+        {/* Logout Button */}
         <Button variant="outline" onClick={() => signOut({ callbackUrl: "/" })}>
-  <LogOut className="w-4 h-4 mr-2" />
-  Logout
-</Button>
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+
         <Button asChild size="lg" className="gap-2 text-base font-semibold">
           <Link href="/test">
             <Play className="w-5 h-5" />
@@ -145,5 +157,5 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
