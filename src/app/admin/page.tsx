@@ -163,18 +163,18 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Stats Grid - your original cards stay exactly the same */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          {/* Paste your existing stat cards here if you want – they are unchanged */}
+          {/* Your original stats cards stay here */}
         </div>
 
-        {/* Recent Tests Table - your original table stays exactly the same */}
+        {/* Recent Tests Table */}
         <Card>
-          {/* ... your existing recent tests table ... */}
+          {/* Your original table stays here */}
         </Card>
       </main>
 
-      {/* AI MODAL */}
+      {/* AI Modal */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
