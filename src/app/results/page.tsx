@@ -6,12 +6,12 @@ import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import {
   Trophy,
-  Download,
   ArrowLeft,
-  Brain,
   CheckCircle,
   Loader2,
-  FileText
+  FileText,
+  AlertCircle,
+  Mail
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,16 +50,12 @@ function ResultsContent() {
       }
     }
 
-    if (sessionId) {
-      verifyAndLoadResults()
-    } else {
-      setLoading(false)
-    }
+    if (sessionId) verifyAndLoadResults()
+    else setLoading(false)
   }, [session, status, sessionId])
 
   const handleDownloadPDF = () => {
     if (!testResult?.pdfReport) return
-
     const blob = new Blob([testResult.pdfReport], { type: "application/pdf" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -86,13 +82,13 @@ function ResultsContent() {
           <AlertCircle className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
           <p className="text-muted-foreground mb-6">{error || "No results found"}</p>
-          <Link href="/">
-            <Button>Return Home</Button>
-          </Link>
+          <Link href="/"><Button>Return Home</Button></Link>
         </div>
       </div>
     )
   }
+
+  const isPremium = !!testResult.pdfReport   // Only Premium has PDF
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted py-12">
@@ -109,7 +105,11 @@ function ResultsContent() {
           </div>
           <Trophy className="w-20 h-20 mx-auto text-amber-500 mb-6" />
           <h1 className="text-5xl font-bold mb-2">Your Results Are Ready</h1>
-          <p className="text-muted-foreground text-lg">You now have full access to your cognitive profile</p>
+          <p className="text-muted-foreground text-lg">
+            {isPremium
+              ? "Premium access unlocked – PDF sent to your email"
+              : "Basic access unlocked – full results available online"}
+          </p>
         </motion.div>
 
         {/* Score card */}
@@ -145,16 +145,29 @@ function ResultsContent() {
           </CardContent>
         </Card>
 
-        {/* Premium actions */}
-        {testResult.pdfReport && (
-          <Button
-            onClick={handleDownloadPDF}
-            size="lg"
-            className="w-full mb-6 text-lg py-7"
-          >
-            <FileText className="mr-3 w-6 h-6" />
-            Download Full Premium PDF Report
-          </Button>
+        {/* Premium-only PDF section */}
+        {isPremium ? (
+          <>
+            <Button
+              onClick={handleDownloadPDF}
+              size="lg"
+              className="w-full mb-4 text-lg py-7"
+            >
+              <FileText className="mr-3 w-6 h-6" />
+              Download Full Premium PDF Report
+            </Button>
+            <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 text-sm mb-8">
+              <Mail className="w-4 h-4" />
+              <span>PDF was also automatically sent to your email</span>
+            </div>
+          </>
+        ) : (
+          <div className="bg-muted/50 border border-dashed border-muted-foreground/30 rounded-2xl p-8 text-center mb-8">
+            <p className="text-muted-foreground">
+              Basic Access – Full results are available online only.<br />
+              Upgrade to Premium anytime for the beautiful PDF report.
+            </p>
+          </div>
         )}
 
         <div className="flex gap-4">
