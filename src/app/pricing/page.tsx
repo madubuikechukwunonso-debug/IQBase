@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import Link from "next/link"
 
 const pricingTiers = [
@@ -357,3 +356,6 @@ export default function PricingPage() {
     </div>
   )
 }
+
+// 🔥 THIS LINE FIXES THE VERCEL BUILD ERROR
+export const dynamic = 'force-dynamic'
