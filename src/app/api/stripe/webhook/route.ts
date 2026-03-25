@@ -44,17 +44,17 @@ export async function POST(req: NextRequest) {
       if (session.metadata.tier === 'PREMIUM' && session.metadata.testId) {
         const test = await prisma.test.findUnique({
           where: { id: session.metadata.testId },
-          include: { user: true },   // ← only valid relation (no 'result' model)
+          include: { user: true },   // ← only valid relation
         })
 
         if (test) {
-          // Construct TestResult object from flat Test fields (schema has these directly)
+          // Safe result object using ONLY fields that actually exist in your Prisma schema
           const resultForPdf = {
             score: test.score ?? 0,
             percentile: test.percentile ?? 0,
-            category: test.category ?? '',
-            categoryDescription: test.categoryDescription ?? '',
-            categoryColor: test.categoryColor ?? '#000000',
+            category: test.category ?? 'General',
+            categoryDescription: test.categoryDescription ?? 'Your cognitive profile shows strong overall performance.',
+            categoryColor: test.categoryColor ?? '#3b82f6',
             categoryScores: {
               logical: test.logicalScore ?? 0,
               pattern: test.patternScore ?? 0,
