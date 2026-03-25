@@ -1,30 +1,35 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { 
-  Check, 
-  X, 
-  Sparkles, 
-  Download, 
-  FileText, 
+import {
+  Check,
+  X,
+  Sparkles,
+  Download,
+  FileText,
   Mail,
   Brain,
   ArrowRight,
   Lock,
-  Star
+  Star,
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
 
 const pricingTiers = [
   {
     id: "basic",
     name: "Basic Access",
     price: 1,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID || "",
     description: "Unlock your results on the web",
     features: [
       { text: "View full results online", included: true },
@@ -43,6 +48,7 @@ const pricingTiers = [
     id: "premium",
     name: "Premium Report",
     price: 5,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID || "",
     description: "Complete cognitive profile package",
     features: [
       { text: "Everything in Basic", included: true },
@@ -60,8 +66,70 @@ const pricingTiers = [
 ]
 
 export default function PricingPage() {
+  const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { toast } = useToast()
+
   const [isAnnual, setIsAnnual] = useState(false)
   const [hoveredTier, setHoveredTier] = useState<string | null>(null)
+  const [loadingTier, setLoadingTier] = useState<string | null>(null)
+
+  const resultParam = searchParams.get("result")
+
+  const handleCheckout = async (tier: any) => {
+    if (!tier.priceId) {
+      toast({
+        title: "Configuration Error",
+        description: "Stripe price ID is not configured. Please check your .env.local file.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!session?.user?.email) {
+      toast({
+        title: "Not logged in",
+        description: "Please log in again to continue.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoadingTier(tier.id)
+
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId: tier.priceId,
+          email: session.user.email,
+          testId: resultParam ? JSON.parse(decodeURIComponent(resultParam)).id : undefined,
+          tier: tier.id.toUpperCase(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.error || "Checkout failed")
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error("No checkout URL returned from Stripe")
+      }
+    } catch (err: any) {
+      console.error(err)
+      toast({
+        title: "Checkout failed",
+        description: err.message || "Please try again or contact support.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingTier(null)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
@@ -77,7 +145,6 @@ export default function PricingPage() {
           <Badge variant="outline">Pricing</Badge>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-12 max-w-5xl">
         {/* Header */}
         <motion.div
@@ -97,7 +164,6 @@ export default function PricingPage() {
             Choose the plan that works best for you. Both options give you instant access to your results.
           </p>
         </motion.div>
-
         {/* Pricing Cards */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -114,10 +180,10 @@ export default function PricingPage() {
               onMouseEnter={() => setHoveredTier(tier.id)}
               onMouseLeave={() => setHoveredTier(null)}
             >
-              <Card 
+              <Card
                 className={`h-full relative overflow-hidden transition-all duration-300 ${
-                  tier.popular 
-                    ? 'border-2 border-primary shadow-xl scale-105' 
+                  tier.popular
+                    ? 'border-2 border-primary shadow-xl scale-105'
                     : 'border shadow-lg'
                 } ${hoveredTier === tier.id ? 'shadow-2xl' : ''}`}
               >
@@ -126,11 +192,10 @@ export default function PricingPage() {
                     MOST POPULAR
                   </div>
                 )}
-
                 <CardHeader className="pb-4">
                   <div className={`w-12 h-12 rounded-xl ${
-                    tier.popular 
-                      ? 'bg-gradient-to-br from-primary to-purple-600' 
+                    tier.popular
+                      ? 'bg-gradient-to-br from-primary to-purple-600'
                       : 'bg-muted'
                   } flex items-center justify-center mb-4`}>
                     <tier.icon className={`w-6 h-6 ${tier.popular ? 'text-white' : 'text-muted-foreground'}`} />
@@ -138,13 +203,11 @@ export default function PricingPage() {
                   <CardTitle className="text-2xl">{tier.name}</CardTitle>
                   <p className="text-muted-foreground">{tier.description}</p>
                 </CardHeader>
-
                 <CardContent className="space-y-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-bold">${tier.price}</span>
                     <span className="text-muted-foreground">one-time</span>
                   </div>
-
                   <ul className="space-y-3">
                     {tier.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-3">
@@ -163,21 +226,30 @@ export default function PricingPage() {
                       </li>
                     ))}
                   </ul>
-
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     variant={tier.popular ? 'gradient' : 'outline'}
                     className={`w-full ${tier.popular ? 'btn-shine' : ''}`}
+                    onClick={() => handleCheckout(tier)}
+                    disabled={loadingTier === tier.id}
                   >
-                    {tier.cta}
-                    <ArrowRight className="ml-2 w-4 h-4" />
+                    {loadingTier === tier.id ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Redirecting to Stripe...
+                      </>
+                    ) : (
+                      <>
+                        {tier.cta}
+                        <ArrowRight className="ml-2 w-4 h-4" />
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
             </motion.div>
           ))}
         </motion.div>
-
         {/* Features Comparison */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -232,7 +304,6 @@ export default function PricingPage() {
             </div>
           </Card>
         </motion.div>
-
         {/* FAQ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -269,7 +340,6 @@ export default function PricingPage() {
             ))}
           </div>
         </motion.div>
-
         {/* Trust Badges */}
         <motion.div
           initial={{ opacity: 0 }}
