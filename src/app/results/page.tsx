@@ -34,9 +34,22 @@ function ResultsContent() {
       return
     }
 
-    const verifyAndLoadResults = async () => {
+    const loadResults = async () => {
+      if (!sessionId) {
+        setError("No session ID found")
+        setLoading(false)
+        return
+      }
+
       try {
         const res = await fetch(`/api/results/verify?session_id=${sessionId}`)
+
+        // Safety check – if we get HTML instead of JSON
+        const contentType = res.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Server returned invalid response")
+        }
+
         const data = await res.json()
 
         if (!res.ok) throw new Error(data.error || "Failed to load results")
@@ -50,8 +63,7 @@ function ResultsContent() {
       }
     }
 
-    if (sessionId) verifyAndLoadResults()
-    else setLoading(false)
+    loadResults()
   }, [session, status, sessionId])
 
   const handleDownloadPDF = () => {
@@ -60,10 +72,8 @@ function ResultsContent() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `IQBase-Premium-Report-${testResult.score || "Unknown"}.pdf`
-    document.body.appendChild(a)
+    a.download = `IQBase-Report-${testResult.score || "Unknown"}.pdf`
     a.click()
-    document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
 
@@ -77,23 +87,24 @@ function ResultsContent() {
 
   if (error || !testResult) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-center bg-gradient-to-br from-background to-muted">
-        <div>
+      <div className="min-h-screen flex items-center justify-center text-center bg-gradient-to-br from-background to-muted p-4">
+        <div className="max-w-md">
           <AlertCircle className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
           <p className="text-muted-foreground mb-6">{error || "No results found"}</p>
-          <Link href="/"><Button>Return Home</Button></Link>
+          <Link href="/">
+            <Button>Return Home</Button>
+          </Link>
         </div>
       </div>
     )
   }
 
-  const isPremium = !!testResult.pdfReport   // Only Premium has PDF
+  const isPremium = !!testResult.pdfReport
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted py-12">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Success banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -101,18 +112,17 @@ function ResultsContent() {
         >
           <div className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-6 py-3 rounded-full mb-6">
             <CheckCircle className="w-5 h-5" />
-            <span className="font-semibold">Payment Successful • Thank you!</span>
+            <span className="font-semibold">Payment Successful</span>
           </div>
           <Trophy className="w-20 h-20 mx-auto text-amber-500 mb-6" />
           <h1 className="text-5xl font-bold mb-2">Your Results Are Ready</h1>
           <p className="text-muted-foreground text-lg">
             {isPremium
-              ? "Premium access unlocked – PDF sent to your email"
-              : "Basic access unlocked – full results available online"}
+              ? "Premium unlocked – PDF also sent to your email"
+              : "Basic access unlocked"}
           </p>
         </motion.div>
 
-        {/* Score card */}
         <Card className="mb-8 border-0 shadow-2xl">
           <CardHeader className="text-center pt-8">
             <CardTitle className="text-8xl font-bold text-primary">
@@ -125,34 +135,17 @@ function ResultsContent() {
           </CardHeader>
           <CardContent className="p-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">Logical</p>
-                <p className="text-3xl font-bold">{testResult.logicalScore ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Pattern</p>
-                <p className="text-3xl font-bold">{testResult.patternScore ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Numerical</p>
-                <p className="text-3xl font-bold">{testResult.numericalScore ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Speed</p>
-                <p className="text-3xl font-bold">{testResult.speedScore ?? 0}</p>
-              </div>
+              <div><p className="text-xs text-muted-foreground">Logical</p><p className="text-3xl font-bold">{testResult.logicalScore ?? 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Pattern</p><p className="text-3xl font-bold">{testResult.patternScore ?? 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Numerical</p><p className="text-3xl font-bold">{testResult.numericalScore ?? 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Speed</p><p className="text-3xl font-bold">{testResult.speedScore ?? 0}</p></div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Premium-only PDF section */}
         {isPremium ? (
           <>
-            <Button
-              onClick={handleDownloadPDF}
-              size="lg"
-              className="w-full mb-4 text-lg py-7"
-            >
+            <Button onClick={handleDownloadPDF} size="lg" className="w-full mb-4 text-lg py-7">
               <FileText className="mr-3 w-6 h-6" />
               Download Full Premium PDF Report
             </Button>
@@ -163,10 +156,7 @@ function ResultsContent() {
           </>
         ) : (
           <div className="bg-muted/50 border border-dashed border-muted-foreground/30 rounded-2xl p-8 text-center mb-8">
-            <p className="text-muted-foreground">
-              Basic Access – Full results are available online only.<br />
-              Upgrade to Premium anytime for the beautiful PDF report.
-            </p>
+            <p className="text-muted-foreground">Basic Access – Results available online only</p>
           </div>
         )}
 
@@ -188,13 +178,7 @@ function ResultsContent() {
 
 export default function ResultsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="w-12 h-12 animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-12 h-12 animate-spin" /></div>}>
       <ResultsContent />
     </Suspense>
   )
