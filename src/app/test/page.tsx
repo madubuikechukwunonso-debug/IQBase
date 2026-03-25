@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import {
   Brain,
   Clock,
@@ -24,15 +24,10 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
-export const dynamic = "force-dynamic"
-
 const QUESTION_COUNT = 20
-const WARNING_TIME = 10 // seconds
 
 export default function TestPage() {
-  const sessionData = useSession()
-  const session = sessionData?.data ?? null
-  const status = sessionData?.status ?? "loading"
+  const { data: session, status } = useSession()
   const router = useRouter()
 
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
@@ -43,21 +38,9 @@ export default function TestPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
+  const [testId, setTestId] = useState<string>("")
 
-  // RELIABLE REDIRECT — waits for session to load
-  useEffect(() => {
-    if (testState !== 'completed' || !result) return
-    if (status === "loading") return
-
-    if (status === "authenticated") {
-      const resultString = encodeURIComponent(JSON.stringify(result))
-      router.push(`/pricing?result=${resultString}`)
-    } else {
-      router.push(`/register?callbackUrl=/test`)
-    }
-  }, [testState, result, status, router])
-
-  // Initialize test
+  // Start test
   const startTest = useCallback(() => {
     const shuffled = shuffleArray(allQuestions).slice(0, QUESTION_COUNT)
     setQuestions(shuffled)
@@ -69,7 +52,7 @@ export default function TestPage() {
     setShowFeedback(false)
   }, [])
 
-  // Timer effect
+  // Timer
   useEffect(() => {
     if (testState !== 'testing' || showFeedback) return
     const timer = setInterval(() => {
@@ -84,27 +67,28 @@ export default function TestPage() {
     return () => clearInterval(timer)
   }, [testState, currentIndex, showFeedback])
 
-  // Handle answer selection
   const handleAnswerSelect = (index: number) => {
     if (showFeedback) return
     setSelectedAnswer(index)
     handleAnswerSubmit(index)
   }
 
-  // Handle answer submission
   const handleAnswerSubmit = (answerIndex: number) => {
     const currentQuestion = questions[currentIndex]
     if (!currentQuestion) return
+
     const timeSpent = (currentQuestion.timeLimit - timeLeft) * 1000
-    const answer: Answer = {
+    const newAnswer: Answer = {
       questionId: currentQuestion.id,
       selectedAnswer: answerIndex,
       timeSpent,
       isCorrect: answerIndex === currentQuestion.correctAnswer,
     }
-    const updatedAnswers = [...answers, answer]
+
+    const updatedAnswers = [...answers, newAnswer]
     setAnswers(updatedAnswers)
     setShowFeedback(true)
+
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
         setCurrentIndex((prev) => prev + 1)
@@ -112,25 +96,57 @@ export default function TestPage() {
         setSelectedAnswer(null)
         setShowFeedback(false)
       } else {
+        // Final scoring
         const testResult = calculateScore(updatedAnswers, questions)
         setResult(testResult)
         setTestState('completed')
+
+        // Save to database
+        saveTestToDB(updatedAnswers, testResult)
       }
     }, 1600)
   }
 
-  // ==================== INTRO ====================
+  const saveTestToDB = async (finalAnswers: Answer[], testResult: TestResult) => {
+    try {
+      const res = await fetch('/api/tests/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answers: finalAnswers,
+          result: testResult,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.testId) {
+        setTestId(data.testId)
+      }
+    } catch (err) {
+      console.error('Failed to save test', err)
+    }
+  }
+
+  // Redirect to pricing with real testId
+  useEffect(() => {
+    if (testState === 'completed' && result && testId) {
+      const resultString = encodeURIComponent(JSON.stringify({ id: testId, ...result }))
+      router.push(`/pricing?result=${resultString}`)
+    }
+  }, [testState, result, testId, router])
+
+  // Intro screen
   if (testState === 'intro') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card>
+        <Card className="max-w-md w-full">
           <CardHeader className="text-center">
-            <Brain className="w-10 h-10 mx-auto mb-4" />
-            <CardTitle>Cognitive Assessment</CardTitle>
+            <Brain className="w-12 h-12 mx-auto mb-4 text-primary" />
+            <CardTitle className="text-3xl">Cognitive Assessment</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Button onClick={startTest} className="w-full">
-              Start Assessment
+          <CardContent className="text-center">
+            <Button onClick={startTest} className="w-full text-lg py-6">
+              Start 20-Question Test
             </Button>
           </CardContent>
         </Card>
@@ -138,23 +154,18 @@ export default function TestPage() {
     )
   }
 
-  // ==================== COMPLETED ====================
+  // Completed screen (fallback)
   if (testState === 'completed' && result) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="text-center">
+        <Card className="text-center max-w-md w-full">
           <CardHeader>
-            <Trophy className="w-10 h-10 mx-auto mb-4" />
-            <CardTitle>Assessment Complete</CardTitle>
+            <Trophy className="w-12 h-12 mx-auto mb-4 text-amber-500" />
+            <CardTitle>Assessment Complete!</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button
-              onClick={() => {
-                const resultString = encodeURIComponent(JSON.stringify(result))
-                router.push(`/pricing?result=${resultString}`)
-              }}
-            >
-              Unlock Results
+            <Button onClick={() => {}} className="w-full" disabled>
+              Redirecting to pricing...
             </Button>
           </CardContent>
         </Card>
@@ -162,52 +173,47 @@ export default function TestPage() {
     )
   }
 
-  // ==================== ACTIVE TEST — ONLY HIGHLIGHTS WHAT USER PICKED (no correct/wrong reveal) ====================
+  // Active test
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
-  const progress = (currentIndex / questions.length) * 100
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
-      <div className="mb-4 flex justify-between">
-        <span>Question {currentIndex + 1}</span>
-        <span>{timeLeft}s</span>
+      <div className="mb-4 flex justify-between text-sm">
+        <span>Question {currentIndex + 1} of {questions.length}</span>
+        <span className="flex items-center gap-1">
+          <Timer className="w-4 h-4" />
+          {timeLeft}s
+        </span>
       </div>
-      <Progress value={progress} />
-      <Card className="mt-4">
+      <Progress value={(currentIndex / questions.length) * 100} className="mb-6" />
+
+      <Card>
         <CardHeader>
           <CardTitle>{currentQuestion.question}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {currentQuestion.options.map((option, index) => {
-            const isSelected = selectedAnswer === index
-
-            let buttonClass = "block w-full p-5 border-2 rounded-xl text-left text-lg font-medium transition-all duration-200"
-
-            if (isSelected) {
-              buttonClass += " bg-indigo-100 dark:bg-indigo-900 border-indigo-600 text-indigo-700 dark:text-indigo-300 scale-[1.02]"
-            } else {
-              buttonClass += " border-gray-300 dark:border-gray-700 hover:border-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-            }
-
-            return (
-              <button
-                key={index}
-                onClick={() => handleAnswerSelect(index)}
-                disabled={showFeedback}
-                className={buttonClass}
-              >
-                <span>{option}</span>
-              </button>
-            )
-          })}
+          {currentQuestion.options.map((option, index) => (
+            <button
+              key={index}
+              onClick={() => handleAnswerSelect(index)}
+              disabled={showFeedback}
+              className={`w-full p-5 text-left border-2 rounded-2xl transition-all ${
+                selectedAnswer === index
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
         </CardContent>
       </Card>
 
       {showFeedback && (
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          Next question loading in 1.6 seconds...
-        </div>
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Next question in 1.6 seconds...
+        </p>
       )}
     </div>
   )
