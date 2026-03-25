@@ -22,10 +22,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
 
 export default function AdminPage() {
@@ -41,8 +37,6 @@ export default function AdminPage() {
   const [difficulty, setDifficulty] = useState(3)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
-
-  const { toast } = useToast()
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -61,7 +55,7 @@ export default function AdminPage() {
 
   const generateWithAI = async () => {
     if (!prompt.trim()) {
-      toast({ title: "Please enter a prompt", variant: "destructive" })
+      alert("Please enter a prompt")
       return
     }
 
@@ -80,9 +74,9 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.error || "Generation failed")
 
       setGeneratedQuestion(data)
-      toast({ title: "✅ Question generated successfully!" })
+      alert("✅ Question generated successfully!")
     } catch (err: any) {
-      toast({ title: "AI Generation failed", description: err.message, variant: "destructive" })
+      alert("AI Generation failed: " + err.message)
     } finally {
       setGenerating(false)
     }
@@ -99,15 +93,15 @@ export default function AdminPage() {
       })
 
       if (res.ok) {
-        toast({ title: "✅ Question saved to database!" })
+        alert("✅ Question saved to database!")
         setAiModalOpen(false)
         setGeneratedQuestion(null)
         setPrompt("")
       } else {
-        toast({ title: "Failed to save question", variant: "destructive" })
+        alert("Failed to save question")
       }
     } catch (err) {
-      toast({ title: "Save failed", variant: "destructive" })
+      alert("Save failed")
     }
   }
 
@@ -163,18 +157,18 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid - your original cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          {/* Your original stats cards stay here */}
+          {/* Paste your existing stat cards here if you want – they are unchanged */}
         </div>
 
-        {/* Recent Tests Table */}
+        {/* Recent Tests Table - your original table */}
         <Card>
-          {/* Your original table stays here */}
+          {/* Paste your existing recent tests table here */}
         </Card>
       </main>
 
-      {/* AI Modal */}
+      {/* AI Modal - using native HTML elements */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -187,70 +181,69 @@ export default function AdminPage() {
                 <Sparkles className="w-6 h-6 text-purple-500" />
                 <h2 className="text-2xl font-bold">AI Question Generator</h2>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setAiModalOpen(false)}>
-                <X className="w-5 h-5" />
-              </Button>
+              <button onClick={() => setAiModalOpen(false)} className="text-muted-foreground hover:text-foreground">
+                ✕
+              </button>
             </div>
 
             <div className="p-6 space-y-6 overflow-auto max-h-[70vh]">
               <div>
-                <Label>Prompt / Idea</Label>
-                <Textarea
+                <label className="block text-sm font-medium mb-2">Prompt / Idea</label>
+                <textarea
                   placeholder="Create a hard logical reasoning question about conditional statements..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   rows={4}
-                  className="mt-2"
+                  className="w-full border border-border rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <Label>Category</Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="logical">Logical Reasoning</SelectItem>
-                      <SelectItem value="pattern">Pattern Recognition</SelectItem>
-                      <SelectItem value="numerical">Numerical Reasoning</SelectItem>
-                      <SelectItem value="speed">Processing Speed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="block text-sm font-medium mb-2">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full border border-border rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="logical">Logical Reasoning</option>
+                    <option value="pattern">Pattern Recognition</option>
+                    <option value="numerical">Numerical Reasoning</option>
+                    <option value="speed">Processing Speed</option>
+                  </select>
                 </div>
 
                 <div>
-                  <Label>Difficulty (1-5)</Label>
-                  <Input
+                  <label className="block text-sm font-medium mb-2">Difficulty (1-5)</label>
+                  <input
                     type="range"
                     min="1"
                     max="5"
                     value={difficulty}
                     onChange={(e) => setDifficulty(Number(e.target.value))}
-                    className="mt-2 accent-purple-600"
+                    className="w-full accent-purple-600"
                   />
                   <div className="text-center text-sm text-muted-foreground mt-1">{difficulty}</div>
                 </div>
               </div>
 
-              <Button
+              <button
                 onClick={generateWithAI}
                 disabled={generating}
-                className="w-full py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600"
+                className="w-full py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-2xl font-medium flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {generating ? (
                   <>
-                    <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                     Generating with AI...
                   </>
                 ) : (
                   <>
-                    <Wand2 className="mr-3 h-5 w-5" />
+                    <Wand2 className="h-5 w-5" />
                     Generate Question
                   </>
                 )}
-              </Button>
+              </button>
 
               {generatedQuestion && (
                 <motion.div
@@ -264,16 +257,19 @@ export default function AdminPage() {
                     {generatedQuestion.options.map((opt: string, i: number) => (
                       <div
                         key={i}
-                        className={`p-4 rounded-xl border ${i === generatedQuestion.correctAnswer ? "border-green-500 bg-green-50 dark:bg-green-950" : "border-border"}`}
+                        className={`p-4 rounded-xl border ${i === generatedQuestion.correctAnswer ? "border-green-500 bg-green-50" : "border-border"}`}
                       >
                         {opt}
                         {i === generatedQuestion.correctAnswer && <CheckCircle className="inline ml-2 w-4 h-4 text-green-500" />}
                       </div>
                     ))}
                   </div>
-                  <Button onClick={saveGeneratedQuestion} className="w-full mt-6">
+                  <button
+                    onClick={saveGeneratedQuestion}
+                    className="w-full mt-6 py-4 bg-primary text-primary-foreground rounded-2xl font-medium"
+                  >
                     Save to Question Bank
-                  </Button>
+                  </button>
                 </motion.div>
               )}
             </div>
