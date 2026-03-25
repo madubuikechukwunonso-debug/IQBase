@@ -48,12 +48,11 @@ export async function POST(req: NextRequest) {
         })
 
         if (test) {
-          // Construct minimal TestResult object using ONLY fields that exist in your Prisma schema
+          // Construct TestResult object using ONLY fields that exist in your Prisma schema
           const resultForPdf = {
             score: test.score ?? 0,
             percentile: test.percentile ?? 0,
             category: test.category ?? 'General',
-            // These fields do not exist in your current schema → use safe defaults
             categoryDescription: 'Your cognitive profile shows strong overall performance.',
             categoryColor: '#3b82f6',
             categoryScores: {
