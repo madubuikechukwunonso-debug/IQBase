@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Suspense } from "react"   // ← Added for suspense boundary
+import { Suspense } from "react"
 import { useSession } from "next-auth/react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import {
   Check,
@@ -64,13 +64,22 @@ const pricingTiers = [
 function PricingContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
-  const router = useRouter()
 
-  const [isAnnual, setIsAnnual] = useState(false)
   const [hoveredTier, setHoveredTier] = useState<string | null>(null)
   const [loadingTier, setLoadingTier] = useState<string | null>(null)
 
   const resultParam = searchParams.get("result")
+
+  // Safely extract testId from the result JSON parameter
+  let testId = ""
+  if (resultParam) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(resultParam))
+      testId = parsed.id || ""
+    } catch (e) {
+      console.warn("Failed to parse result param", e)
+    }
+  }
 
   const handleCheckout = async (tier: any) => {
     if (!tier.priceId) {
@@ -94,7 +103,7 @@ function PricingContent() {
         body: JSON.stringify({
           priceId: tier.priceId,
           email: session.user.email,
-          testId: resultParam ? JSON.parse(decodeURIComponent(resultParam)).id : undefined,
+          testId: testId,                    // ← Critical fix: now reliably passed
           tier: tier.id.toUpperCase(),
         }),
       })
@@ -238,8 +247,7 @@ function PricingContent() {
           ))}
         </motion.div>
 
-        {/* Features Comparison, FAQ, Trust Badges – all unchanged */}
-        {/* (kept exactly as your original beautiful UI) */}
+        {/* Features Comparison */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -286,9 +294,44 @@ function PricingContent() {
           </Card>
         </motion.div>
 
-        {/* FAQ and Trust Badges sections are unchanged – copy them exactly from your previous file if you want, but they are not part of the suspense issue */}
+        {/* FAQ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="mt-16 max-w-3xl mx-auto"
+        >
+          <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+          <div className="space-y-4">
+            {[
+              {
+                q: "What payment methods do you accept?",
+                a: "We accept all major credit cards (Visa, Mastercard, American Express) and PayPal. All payments are processed securely through Stripe.",
+              },
+              {
+                q: "How soon will I receive my premium report?",
+                a: "Your premium PDF report will be delivered to your email within minutes of payment confirmation.",
+              },
+              {
+                q: "Can I retake the test?",
+                a: "Yes! With the Premium plan, you get lifetime access including the ability to retake the test and track your progress over time.",
+              },
+              {
+                q: "Is my payment information secure?",
+                a: "Absolutely. We use Stripe, a PCI-compliant payment processor. Your card details never touch our servers.",
+              },
+            ].map((faq, i) => (
+              <Card key={i} className="border-0 shadow">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold mb-2">{faq.q}</h3>
+                  <p className="text-muted-foreground">{faq.a}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </motion.div>
 
-        {/* Trust Badges (kept for completeness) */}
+        {/* Trust Badges */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -318,18 +361,20 @@ function PricingContent() {
 
 export default function PricingPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading pricing page...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading pricing page...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <PricingContent />
     </Suspense>
   )
 }
 
-// Force dynamic rendering (extra safety)
+// Force dynamic rendering (required because we use useSearchParams)
 export const dynamic = 'force-dynamic'
