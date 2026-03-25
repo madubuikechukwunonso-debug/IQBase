@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Trophy, TrendingUp, Target, Play } from "lucide-react";
-import ScoreTrendChart from "./ScoreTrendChart"; // ← NEW client component
+import ScoreTrendChart from "./ScoreTrendChart";
 
 const prisma = new PrismaClient();
 
@@ -19,7 +19,6 @@ export default async function DashboardPage() {
     take: 10,
   });
 
-  // Quick stats
   const totalTests = tests.length;
   const avgScore = totalTests > 0 
     ? Math.round(tests.reduce((sum, t) => sum + (t.score || 0), 0) / totalTests) 
@@ -130,7 +129,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
                   <Button variant="outline" asChild>
-                    <Link href={`/results?score=${test.score}&percentile=${test.percentile}&category=${test.category}`}>
+                    <Link href={`/results?testId=${test.id}`}>
                       View Details
                     </Link>
                   </Button>
