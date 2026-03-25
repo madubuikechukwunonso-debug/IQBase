@@ -22,6 +22,7 @@ function ResultsContent() {
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
+  const testId = searchParams.get("testId")   // ← NEW: support dashboard links
 
   const [testResult, setTestResult] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -35,21 +36,19 @@ function ResultsContent() {
     }
 
     const loadResults = async () => {
-      if (!sessionId) {
-        setError("No session ID found")
-        setLoading(false)
-        return
-      }
-
       try {
-        const res = await fetch(`/api/results/verify?session_id=${sessionId}`)
-
-        // Safety check – if we get HTML instead of JSON
-        const contentType = res.headers.get("content-type")
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Server returned invalid response")
+        let url = ""
+        if (sessionId) {
+          url = `/api/results/verify?session_id=${sessionId}`
+        } else if (testId) {
+          url = `/api/results/verify?testId=${testId}`   // ← NEW endpoint support
+        } else {
+          setError("No session ID or test ID found")
+          setLoading(false)
+          return
         }
 
+        const res = await fetch(url)
         const data = await res.json()
 
         if (!res.ok) throw new Error(data.error || "Failed to load results")
@@ -64,7 +63,7 @@ function ResultsContent() {
     }
 
     loadResults()
-  }, [session, status, sessionId])
+  }, [session, status, sessionId, testId])
 
   const handleDownloadPDF = () => {
     if (!testResult?.pdfReport) return
@@ -92,8 +91,8 @@ function ResultsContent() {
           <AlertCircle className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
           <p className="text-muted-foreground mb-6">{error || "No results found"}</p>
-          <Link href="/">
-            <Button>Return Home</Button>
+          <Link href="/dashboard">
+            <Button>Back to Dashboard</Button>
           </Link>
         </div>
       </div>
@@ -105,29 +104,21 @@ function ResultsContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted py-12">
       <div className="max-w-4xl mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-6 py-3 rounded-full mb-6">
             <CheckCircle className="w-5 h-5" />
-            <span className="font-semibold">Payment Successful</span>
+            <span className="font-semibold">Results Loaded</span>
           </div>
           <Trophy className="w-20 h-20 mx-auto text-amber-500 mb-6" />
-          <h1 className="text-5xl font-bold mb-2">Your Results Are Ready</h1>
+          <h1 className="text-5xl font-bold mb-2">Your Results</h1>
           <p className="text-muted-foreground text-lg">
-            {isPremium
-              ? "Premium unlocked – PDF also sent to your email"
-              : "Basic access unlocked"}
+            {isPremium ? "Premium unlocked – PDF sent to email" : "Basic access unlocked"}
           </p>
         </motion.div>
 
         <Card className="mb-8 border-0 shadow-2xl">
           <CardHeader className="text-center pt-8">
-            <CardTitle className="text-8xl font-bold text-primary">
-              {testResult.score}
-            </CardTitle>
+            <CardTitle className="text-8xl font-bold text-primary">{testResult.score}</CardTitle>
             <p className="text-sm uppercase tracking-widest text-muted-foreground">IQ Score</p>
             <Badge className="mt-4 text-lg px-6 py-2" variant="secondary">
               {testResult.category || "General"}
