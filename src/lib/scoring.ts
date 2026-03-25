@@ -190,19 +190,16 @@ function generateRecommendations(
       'Practice syllogisms and logical deduction puzzles to strengthen your reasoning skills.',
     );
   }
-
   if (weaknesses.includes('Pattern Recognition')) {
     recommendations.push(
       'Engage in activities like Sudoku, chess, or sequence puzzles to improve pattern detection.',
     );
   }
-
   if (weaknesses.includes('Numerical Reasoning')) {
     recommendations.push(
       'Work on mental math exercises and percentage calculations to boost numerical fluency.',
     );
   }
-
   if (weaknesses.includes('Processing Speed')) {
     recommendations.push(
       'Try timed quizzes and quick-response games to increase your cognitive processing speed.',
@@ -219,7 +216,6 @@ function generateRecommendations(
   recommendations.push(
     'Regular cognitive exercise, adequate sleep, and a healthy diet support optimal brain function.',
   );
-
   recommendations.push(
     'Consider exploring new learning domains to diversify your cognitive abilities.',
   );
@@ -257,19 +253,26 @@ export function getDetailedBreakdown(
       : 0;
 
   // Calculate average time per category
-  const categoryTimes: Record<string, number[]> = {};
+  const categoryTimes: Record<string, number[]> = {
+    logical: [],
+    pattern: [],
+    numerical: [],
+    speed: [],
+  };
+
   answers.forEach((answer) => {
     const question = questions.find((q) => q.id === answer.questionId);
-    if (question) {
-      if (!categoryTimes[question.type]) categoryTimes[question.type] = [];
+    if (question && question.type in categoryTimes) {
       categoryTimes[question.type].push(answer.timeSpent);
     }
   });
 
-  const categoryAverages = Object.entries(categoryTimes).map(([type, times]) => ({
-    type,
-    average: times.reduce((a, b) => a + b, 0) / times.length,
-  }));
+  const categoryAverages = Object.entries(categoryTimes)
+    .map(([type, times]) => ({
+      type,
+      average: times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0,
+    }))
+    .filter((cat) => cat.average > 0); // only show categories that had questions
 
   categoryAverages.sort((a, b) => a.average - b.average);
 
