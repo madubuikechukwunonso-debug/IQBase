@@ -48,22 +48,26 @@ export async function POST(req: NextRequest) {
         })
 
         if (test) {
-          // Safe result object using ONLY fields that actually exist in your Prisma schema
+          // Construct minimal TestResult object using ONLY fields that exist in your Prisma schema
           const resultForPdf = {
             score: test.score ?? 0,
             percentile: test.percentile ?? 0,
             category: test.category ?? 'General',
-            categoryDescription: test.categoryDescription ?? 'Your cognitive profile shows strong overall performance.',
-            categoryColor: test.categoryColor ?? '#3b82f6',
+            // These fields do not exist in your current schema → use safe defaults
+            categoryDescription: 'Your cognitive profile shows strong overall performance.',
+            categoryColor: '#3b82f6',
             categoryScores: {
               logical: test.logicalScore ?? 0,
               pattern: test.patternScore ?? 0,
               numerical: test.numericalScore ?? 0,
               speed: test.speedScore ?? 0,
             },
-            strengths: test.strengths ?? [],
-            weaknesses: test.weaknesses ?? [],
-            recommendations: test.recommendations ?? [],
+            strengths: [],
+            weaknesses: [],
+            recommendations: [
+              'Regular cognitive exercise, adequate sleep, and a healthy diet support optimal brain function.',
+              'Consider exploring new learning domains to diversify your cognitive abilities.',
+            ],
           }
 
           const pdfBuffer = await generatePremiumReport(
