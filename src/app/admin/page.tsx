@@ -80,7 +80,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.error || "Generation failed")
 
       setGeneratedQuestion(data)
-      toast({ title: "Question generated successfully!" })
+      toast({ title: "✅ Question generated successfully!" })
     } catch (err: any) {
       toast({ title: "AI Generation failed", description: err.message, variant: "destructive" })
     } finally {
@@ -145,7 +145,6 @@ export default function AdminPage() {
           </div>
 
           <div className="flex gap-3">
-            {/* AI Button */}
             <Button
               onClick={() => setAiModalOpen(true)}
               className="gap-2 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg shadow-purple-500/30"
@@ -164,14 +163,14 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Stats Grid (your original cards) */}
+        {/* Stats Grid - your original cards stay exactly the same */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          {/* ... your existing stat cards stay exactly the same ... */}
+          {/* Paste your existing stat cards here if you want – they are unchanged */}
         </div>
 
-        {/* Recent Tests Table (your original) */}
+        {/* Recent Tests Table - your original table stays exactly the same */}
         <Card>
-          {/* ... your existing recent tests table stays exactly the same ... */}
+          {/* ... your existing recent tests table ... */}
         </Card>
       </main>
 
@@ -253,12 +252,14 @@ export default function AdminPage() {
                 )}
               </Button>
 
-              {/* Preview */}
               {generatedQuestion && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
-                  <h3 className="font-semibold mb-3">Generated Question Preview</h3>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="border rounded-2xl p-6 bg-muted/30"
+                >
+                  <h3 className="font-semibold mb-3">Preview</h3>
                   <p className="text-lg leading-relaxed mb-6">{generatedQuestion.question}</p>
-
                   <div className="space-y-3">
                     {generatedQuestion.options.map((opt: string, i: number) => (
                       <div
@@ -270,7 +271,6 @@ export default function AdminPage() {
                       </div>
                     ))}
                   </div>
-
                   <Button onClick={saveGeneratedQuestion} className="w-full mt-6">
                     Save to Question Bank
                   </Button>
