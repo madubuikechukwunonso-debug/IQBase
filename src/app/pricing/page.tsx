@@ -8,9 +8,6 @@ import {
   Check,
   X,
   Sparkles,
-  Download,
-  FileText,
-  Mail,
   Brain,
   ArrowRight,
   Lock,
@@ -22,7 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import Link from "next/link"
-import { useToast } from "@/components/ui/use-toast"
 
 const pricingTiers = [
   {
@@ -69,7 +65,6 @@ export default function PricingPage() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { toast } = useToast()
 
   const [isAnnual, setIsAnnual] = useState(false)
   const [hoveredTier, setHoveredTier] = useState<string | null>(null)
@@ -79,20 +74,14 @@ export default function PricingPage() {
 
   const handleCheckout = async (tier: any) => {
     if (!tier.priceId) {
-      toast({
-        title: "Configuration Error",
-        description: "Stripe price ID is not configured. Please check your .env.local file.",
-        variant: "destructive",
-      })
+      alert("Stripe price ID is not configured.\n\nPlease add NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID and NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID to your .env.local file.")
+      console.error("Missing priceId for tier:", tier.id)
       return
     }
 
     if (!session?.user?.email) {
-      toast({
-        title: "Not logged in",
-        description: "Please log in again to continue.",
-        variant: "destructive",
-      })
+      alert("You must be logged in to purchase.\n\nPlease log in and try again.")
+      console.error("No active session")
       return
     }
 
@@ -120,12 +109,8 @@ export default function PricingPage() {
         throw new Error("No checkout URL returned from Stripe")
       }
     } catch (err: any) {
-      console.error(err)
-      toast({
-        title: "Checkout failed",
-        description: err.message || "Please try again or contact support.",
-        variant: "destructive",
-      })
+      console.error("Checkout error:", err)
+      alert(`Checkout failed: ${err.message || "Please try again or contact support."}`)
     } finally {
       setLoadingTier(null)
     }
@@ -145,6 +130,7 @@ export default function PricingPage() {
           <Badge variant="outline">Pricing</Badge>
         </div>
       </header>
+
       <main className="container mx-auto px-4 py-12 max-w-5xl">
         {/* Header */}
         <motion.div
@@ -164,6 +150,7 @@ export default function PricingPage() {
             Choose the plan that works best for you. Both options give you instant access to your results.
           </p>
         </motion.div>
+
         {/* Pricing Cards */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -250,6 +237,7 @@ export default function PricingPage() {
             </motion.div>
           ))}
         </motion.div>
+
         {/* Features Comparison */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -304,6 +292,7 @@ export default function PricingPage() {
             </div>
           </Card>
         </motion.div>
+
         {/* FAQ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -340,6 +329,7 @@ export default function PricingPage() {
             ))}
           </div>
         </motion.div>
+
         {/* Trust Badges */}
         <motion.div
           initial={{ opacity: 0 }}
