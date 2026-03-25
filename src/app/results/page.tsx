@@ -11,7 +11,8 @@ import {
   Loader2,
   FileText,
   AlertCircle,
-  Mail
+  Mail,
+  Calendar
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,11 +23,13 @@ function ResultsContent() {
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
-  const testId = searchParams.get("testId")   // ← NEW: support dashboard links
+  const testId = searchParams.get("testId")
 
   const [testResult, setTestResult] = useState<any>(null)
+  const [allTests, setAllTests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isListView, setIsListView] = useState(false)
 
   useEffect(() => {
     if (status === "loading") return
@@ -35,25 +38,26 @@ function ResultsContent() {
       return
     }
 
-    const loadResults = async () => {
+    const loadData = async () => {
       try {
-        let url = ""
-        if (sessionId) {
-          url = `/api/results/verify?session_id=${sessionId}`
-        } else if (testId) {
-          url = `/api/results/verify?testId=${testId}`   // ← NEW endpoint support
-        } else {
-          setError("No session ID or test ID found")
-          setLoading(false)
-          return
+        // Case 1 & 2: Single test view
+        if (sessionId || testId) {
+          const param = sessionId ? `session_id=${sessionId}` : `testId=${testId}`
+          const res = await fetch(`/api/results/verify?${param}`)
+          const data = await res.json()
+
+          if (!res.ok) throw new Error(data.error || "Failed to load results")
+
+          setTestResult(data.test)
+          setIsListView(false)
+        } 
+        // Case 3: View All Results (no ID provided)
+        else {
+          const res = await fetch('/api/tests')
+          const data = await res.json()
+          setAllTests(data.tests || [])
+          setIsListView(true)
         }
-
-        const res = await fetch(url)
-        const data = await res.json()
-
-        if (!res.ok) throw new Error(data.error || "Failed to load results")
-
-        setTestResult(data.test)
       } catch (err: any) {
         console.error(err)
         setError(err.message)
@@ -62,16 +66,16 @@ function ResultsContent() {
       }
     }
 
-    loadResults()
+    loadData()
   }, [session, status, sessionId, testId])
 
-  const handleDownloadPDF = () => {
-    if (!testResult?.pdfReport) return
-    const blob = new Blob([testResult.pdfReport], { type: "application/pdf" })
+  const handleDownloadPDF = (pdfBuffer: any) => {
+    if (!pdfBuffer) return
+    const blob = new Blob([pdfBuffer], { type: "application/pdf" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `IQBase-Report-${testResult.score || "Unknown"}.pdf`
+    a.download = `IQBase-Report.pdf`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -84,13 +88,13 @@ function ResultsContent() {
     )
   }
 
-  if (error || !testResult) {
+  if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center text-center bg-gradient-to-br from-background to-muted p-4">
         <div className="max-w-md">
           <AlertCircle className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
-          <p className="text-muted-foreground mb-6">{error || "No results found"}</p>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <Link href="/dashboard">
             <Button>Back to Dashboard</Button>
           </Link>
@@ -99,12 +103,68 @@ function ResultsContent() {
     )
   }
 
+  // LIST VIEW – View All Results
+  if (isListView) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted py-12">
+        <div className="max-w-4xl mx-auto px-4">
+          <h1 className="text-4xl font-bold mb-8 text-center">All Test Results</h1>
+
+          {allTests.length === 0 ? (
+            <Card className="text-center py-12">
+              <p className="text-muted-foreground">No tests found yet.</p>
+              <Button asChild className="mt-6">
+                <Link href="/test">Take Your First Test</Link>
+              </Button>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {allTests.map((test: any) => (
+                <Card key={test.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                        <Trophy className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{test.score} points</p>
+                        <p className="text-sm text-muted-foreground">
+                          {test.category} • {new Date(test.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="outline" asChild>
+                      <Link href={`/results?testId=${test.id}`}>
+                        View Details
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-8 text-center">
+            <Link href="/dashboard">
+              <Button variant="outline">Back to Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // SINGLE TEST VIEW (View Details or after payment)
   const isPremium = !!testResult.pdfReport
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted py-12">
       <div className="max-w-4xl mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-10"
+        >
           <div className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-6 py-3 rounded-full mb-6">
             <CheckCircle className="w-5 h-5" />
             <span className="font-semibold">Results Loaded</span>
@@ -118,7 +178,9 @@ function ResultsContent() {
 
         <Card className="mb-8 border-0 shadow-2xl">
           <CardHeader className="text-center pt-8">
-            <CardTitle className="text-8xl font-bold text-primary">{testResult.score}</CardTitle>
+            <CardTitle className="text-8xl font-bold text-primary">
+              {testResult.score}
+            </CardTitle>
             <p className="text-sm uppercase tracking-widest text-muted-foreground">IQ Score</p>
             <Badge className="mt-4 text-lg px-6 py-2" variant="secondary">
               {testResult.category || "General"}
@@ -136,7 +198,7 @@ function ResultsContent() {
 
         {isPremium ? (
           <>
-            <Button onClick={handleDownloadPDF} size="lg" className="w-full mb-4 text-lg py-7">
+            <Button onClick={() => handleDownloadPDF(testResult.pdfReport)} size="lg" className="w-full mb-4 text-lg py-7">
               <FileText className="mr-3 w-6 h-6" />
               Download Full Premium PDF Report
             </Button>
