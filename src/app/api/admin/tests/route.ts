@@ -6,35 +6,43 @@ import prisma from '@/lib/prisma'
 export async function GET() {
   const session = await getServerSession(authOptions)
 
-  console.log("🔍 Admin /tests API - Session received:", JSON.stringify(session?.user, null, 2))
+  console.log("🔍 /api/admin/users - Full Session:", JSON.stringify(session, null, 2))
+  console.log("🔍 Role received:", session?.user?.role)
 
   if (!session || session.user?.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 })
+    return NextResponse.json({ 
+      error: 'Unauthorized - Admin access required',
+      receivedRole: session?.user?.role 
+    }, { status: 403 })
   }
 
-  const tests = await prisma.test.findMany({
-    include: {
-      user: {
-        select: { email: true, name: true }
-      }
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      blocked: true,
+      createdAt: true,
     },
     orderBy: { createdAt: 'desc' }
   })
 
-  return NextResponse.json({ tests })
+  return NextResponse.json({ users })
 }
 
-export async function DELETE(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
 
   if (!session || session.user?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 
-  const { testId } = await req.json()
+  const { userId, blocked } = await req.json()
 
-  await prisma.test.delete({
-    where: { id: testId }
+  await prisma.user.update({
+    where: { id: userId },
+    data: { blocked }
   })
 
   return NextResponse.json({ success: true })
