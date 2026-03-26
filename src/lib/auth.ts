@@ -18,17 +18,13 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        if (!user || !user.hashedPassword) {
-          return null;
-        }
+        if (!user || !user.hashedPassword) return null;
 
         const isValid = await bcrypt.compare(
           credentials.password as string,
@@ -37,12 +33,12 @@ export const authOptions: NextAuthOptions = {
 
         if (!isValid) return null;
 
-        // IMPORTANT: Return role here
+        // Return role here - this is critical
         return {
           id: user.id,
           email: user.email,
           name: user.name ?? null,
-          role: user.role,          // ← Added
+          role: user.role,           // ← Must be returned
         };
       },
     }),
@@ -70,15 +66,15 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;        // ← Added
+        token.role = user.role;        // ← Must be saved in JWT
       }
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user && token.id) {
+      if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string;   // ← Added
+        session.user.role = token.role as string;   // ← Must be copied to session
       }
       return session;
     },
