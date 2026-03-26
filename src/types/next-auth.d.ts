@@ -5,14 +5,14 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
-      role?: string;
+      role: "USER" | "ADMIN";           // required for admin checks
       subscriptionTier?: "FREE" | "PREMIUM";
     } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
     id: string;
-    role?: string;
+    role: "USER" | "ADMIN";             // required for admin checks
     subscriptionTier?: "FREE" | "PREMIUM";
   }
 }
@@ -20,7 +20,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
-    role?: string;
+    role: "USER" | "ADMIN";             // required for admin checks
     subscriptionTier?: "FREE" | "PREMIUM";
   }
 }
