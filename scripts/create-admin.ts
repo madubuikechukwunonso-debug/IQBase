@@ -3,34 +3,41 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-async function createAdmin() {
+async function main() {
   const email = process.env.ADMIN_EMAIL
   const password = process.env.ADMIN_PASSWORD
 
   if (!email || !password) {
-    console.log('⚠️  ADMIN_EMAIL or ADMIN_PASSWORD not set in environment variables.')
-    return
+    console.error("❌ ADMIN_EMAIL or ADMIN_PASSWORD is missing in environment variables!")
+    process.exit(1)
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12)
+  try {
+    const hashedPassword = await bcrypt.hash(password, 12)
 
-  const admin = await prisma.user.upsert({
-    where: { email },
-    update: {
-      role: 'ADMIN',
-      hashedPassword,
-    },
-    create: {
-      email,
-      name: 'Admin',
-      role: 'ADMIN',
-      hashedPassword,
-    },
-  })
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {
+        role: 'ADMIN',
+        hashedPassword,
+      },
+      create: {
+        email,
+        name: 'Admin',
+        role: 'ADMIN',
+        hashedPassword,
+      },
+    })
 
-  console.log(`✅ Admin user ready: ${admin.email} (role: ADMIN)`)
+    console.log(`✅ Admin account created/updated successfully!`)
+    console.log(`   Email    : ${user.email}`)
+    console.log(`   Role     : ${user.role}`)
+  } catch (error) {
+    console.error("❌ Failed to create admin:", error)
+    process.exit(1)
+  } finally {
+    await prisma.$disconnect()
+  }
 }
 
-createAdmin()
-  .catch((e) => console.error('❌ Failed to create admin:', e))
-  .finally(() => prisma.$disconnect())
+main()
