@@ -6,10 +6,14 @@ import prisma from '@/lib/prisma'
 export async function GET() {
   const session = await getServerSession(authOptions)
 
-  console.log("🔍 Admin /users API - Session received:", JSON.stringify(session?.user, null, 2))
+  console.log("🔍 /api/admin/users - Full Session:", JSON.stringify(session, null, 2))
+  console.log("🔍 Role received:", session?.user?.role)
 
   if (!session || session.user?.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 })
+    return NextResponse.json({ 
+      error: 'Unauthorized - Admin access required',
+      receivedRole: session?.user?.role 
+    }, { status: 403 })
   }
 
   const users = await prisma.user.findMany({
