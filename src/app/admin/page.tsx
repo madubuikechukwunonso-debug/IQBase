@@ -34,13 +34,22 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
 
-  // AI Modal
+  // AI Modal - Automatic Generation
   const [aiModalOpen, setAiModalOpen] = useState(false)
-  const [prompt, setPrompt] = useState("")
-  const [category, setCategory] = useState("logical")
-  const [difficulty, setDifficulty] = useState(3)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
+
+  // Hardcoded prompts for random generation
+  const hardcodedPrompts = [
+    "Create a challenging logical reasoning question about conditional statements and syllogisms.",
+    "Create a pattern recognition question with numbers or shapes that requires deep observation.",
+    "Create a numerical reasoning question involving percentages, ratios or sequences.",
+    "Create a processing speed question that tests quick decision making.",
+    "Create a logical puzzle question with multiple steps and clear options.",
+    "Create a visual pattern or matrix question suitable for IQ tests.",
+    "Create a numerical word problem that requires careful calculation.",
+    "Create a logical analogy or relationship question.",
+  ]
 
   useEffect(() => {
     fetchData()
@@ -52,11 +61,9 @@ export default function AdminPage() {
       fetch("/api/admin/users"),
       fetch("/api/admin/tests")
     ])
-
     const statsData = await statsRes.json()
     const usersData = await usersRes.json()
     const testsData = await testsRes.json()
-
     setStats(statsData.stats || {})
     setUsers(usersData.users || [])
     setTests(testsData.tests || [])
@@ -78,20 +85,18 @@ export default function AdminPage() {
     fetchData()
   }
 
-  const generateWithAI = async () => {
-    if (!prompt.trim()) {
-      alert("Please enter a prompt")
-      return
-    }
-
+  const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
+
+    // Pick random prompt
+    const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
 
     try {
       const res = await fetch("/api/admin/generate-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, category, difficulty }),
+        body: JSON.stringify({ prompt: randomPrompt }),
       })
 
       const data = await res.json()
@@ -120,7 +125,6 @@ export default function AdminPage() {
         alert("✅ Question saved to database!")
         setAiModalOpen(false)
         setGeneratedQuestion(null)
-        setPrompt("")
       } else {
         alert("Failed to save question")
       }
@@ -129,11 +133,11 @@ export default function AdminPage() {
     }
   }
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredTests = tests.filter(t => 
+  const filteredTests = tests.filter(t =>
     t.user?.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -232,7 +236,6 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
-            {/* Add more stats as needed */}
           </div>
         )}
 
@@ -330,116 +333,77 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* AI Button floating in corner */}
-        <button
-          onClick={() => setAiModalOpen(true)}
-          className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 hover:scale-105 transition-transform"
-        >
-          <Sparkles className="w-5 h-5" />
-          <Wand2 className="w-5 h-5" />
-          <span className="font-medium">Generate Question with AI</span>
-        </button>
-
-        {/* AI Modal */}
-        {aiModalOpen && (
-          <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-background rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
-            >
-              <div className="p-6 border-b flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-6 h-6 text-purple-500" />
-                  <h2 className="text-2xl font-bold">AI Question Generator</h2>
-                </div>
-                <button onClick={() => setAiModalOpen(false)} className="text-2xl leading-none">×</button>
-              </div>
-
-              <div className="p-6 space-y-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Prompt</label>
-                  <textarea
-                    placeholder="Create a hard logical reasoning question about conditional statements..."
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    rows={4}
-                    className="w-full border border-border rounded-2xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Category</label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full border border-border rounded-2xl p-3"
-                    >
-                      <option value="logical">Logical Reasoning</option>
-                      <option value="pattern">Pattern Recognition</option>
-                      <option value="numerical">Numerical Reasoning</option>
-                      <option value="speed">Processing Speed</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Difficulty (1-5)</label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="5"
-                      value={difficulty}
-                      onChange={(e) => setDifficulty(Number(e.target.value))}
-                      className="w-full accent-purple-600"
-                    />
-                    <div className="text-center text-sm text-muted-foreground mt-1">{difficulty}</div>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={generateWithAI}
-                  disabled={generating}
-                  className="w-full py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="mr-3 h-5 w-5" />
-                      Generate Question
-                    </>
-                  )}
-                </Button>
-
-                {generatedQuestion && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
-                    <h3 className="font-semibold mb-3">Preview</h3>
-                    <p className="text-lg leading-relaxed mb-6">{generatedQuestion.question}</p>
-                    <div className="space-y-3">
-                      {generatedQuestion.options.map((opt: string, i: number) => (
-                        <div
-                          key={i}
-                          className={`p-4 rounded-xl border ${i === generatedQuestion.correctAnswer ? "border-green-500 bg-green-50" : "border-border"}`}
-                        >
-                          {opt}
-                          {i === generatedQuestion.correctAnswer && <CheckCircle className="inline ml-2 w-4 h-4 text-green-500" />}
-                        </div>
-                      ))}
-                    </div>
-                    <Button onClick={saveGeneratedQuestion} className="w-full mt-6">
-                      Save to Question Bank
-                    </Button>
-                  </motion.div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
       </main>
+
+      {/* Floating AI Button */}
+      <button
+        onClick={() => setAiModalOpen(true)}
+        className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 hover:scale-105 transition-transform"
+      >
+        <Sparkles className="w-5 h-5" />
+        <Wand2 className="w-5 h-5" />
+        <span className="font-medium">Generate Random Question</span>
+      </button>
+
+      {/* AI Modal - Automatic */}
+      {aiModalOpen && (
+        <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-background rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+          >
+            <div className="p-6 border-b flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-6 h-6 text-purple-500" />
+                <h2 className="text-2xl font-bold">AI Question Generator</h2>
+              </div>
+              <button onClick={() => setAiModalOpen(false)} className="text-2xl leading-none">×</button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <Button
+                onClick={generateRandomQuestion}
+                disabled={generating}
+                className="w-full py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                    Generating random question...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="mr-3 h-5 w-5" />
+                    Generate Random Question
+                  </>
+                )}
+              </Button>
+
+              {generatedQuestion && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
+                  <h3 className="font-semibold mb-3">Generated Question</h3>
+                  <p className="text-lg leading-relaxed mb-6">{generatedQuestion.question}</p>
+                  <div className="space-y-3">
+                    {generatedQuestion.options.map((opt: string, i: number) => (
+                      <div
+                        key={i}
+                        className={`p-4 rounded-xl border ${i === generatedQuestion.correctAnswer ? "border-green-500 bg-green-50 dark:bg-green-950" : "border-border"}`}
+                      >
+                        {opt}
+                        {i === generatedQuestion.correctAnswer && <CheckCircle className="inline ml-2 w-4 h-4 text-green-500" />}
+                      </div>
+                    ))}
+                  </div>
+                  <Button onClick={saveGeneratedQuestion} className="w-full mt-6">
+                    Save to Question Bank
+                  </Button>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
