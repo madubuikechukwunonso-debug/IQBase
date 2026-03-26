@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -36,13 +37,16 @@ export const authOptions: NextAuthOptions = {
 
         if (!isValid) return null;
 
+        // IMPORTANT: Return role here
         return {
           id: user.id,
           email: user.email,
           name: user.name ?? null,
+          role: user.role,          // ← Added
         };
       },
     }),
+
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -57,31 +61,38 @@ export const authOptions: NextAuthOptions = {
       version: "2.0",
     }),
   ],
+
   session: {
     strategy: "jwt" as const,
   },
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = user.role;        // ← Added
       }
       return token;
     },
+
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+        session.user.role = token.role as string;   // ← Added
       }
       return session;
     },
-    // ← NEW: Global redirect protection (always lands on dashboard after login)
+
     redirect({ url, baseUrl }) {
       return url.startsWith(baseUrl) ? url : `${baseUrl}/dashboard`;
     },
   },
+
   pages: {
     signIn: "/login",
     error: "/auth/error",
   },
+
   secret: process.env.NEXTAUTH_SECRET,
 };
 
