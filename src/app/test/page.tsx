@@ -43,14 +43,19 @@ export default function TestPage() {
     try {
       const res = await fetch("/api/questions")
       const data = await res.json()
-      if (data.questions && data.questions.length > 0) {
-        const shuffled = shuffleArray(data.questions).slice(0, QUESTION_COUNT)
+
+      // Type assertion to fix the TypeScript error
+      const dbQuestions: Question[] = data.questions || []
+
+      if (dbQuestions.length > 0) {
+        const shuffled = shuffleArray(dbQuestions).slice(0, QUESTION_COUNT)
         setQuestions(shuffled)
       } else {
-        alert("No questions found in database. Please add some questions first.")
+        alert("No questions found in database. Please add some questions in the admin panel first.")
       }
     } catch (err) {
       console.error("Failed to fetch questions", err)
+      alert("Failed to load questions from database")
     }
   }, [])
 
