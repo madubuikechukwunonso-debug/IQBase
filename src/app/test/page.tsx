@@ -9,14 +9,12 @@ import {
   CheckCircle,
   XCircle,
   Trophy,
-  Timer,
-  Lock
+  Timer
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { questions as allQuestions } from "@/data/questions"
 import { calculateScore } from "@/lib/scoring"
 import { Answer, Question, TestResult } from "@/types"
 import { shuffleArray } from "@/lib/utils"
@@ -27,7 +25,7 @@ import { useRouter } from "next/navigation"
 const QUESTION_COUNT = 20
 
 export default function TestPage() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
 
   const [testState, setTestState] = useState<'intro' | 'testing' | 'completed'>('intro')
@@ -40,17 +38,31 @@ export default function TestPage() {
   const [result, setResult] = useState<TestResult | null>(null)
   const [testId, setTestId] = useState<string>("")
 
-  // Start test
+  // Fetch questions from database
+  const fetchQuestions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/questions")
+      const data = await res.json()
+      if (data.questions && data.questions.length > 0) {
+        const shuffled = shuffleArray(data.questions).slice(0, QUESTION_COUNT)
+        setQuestions(shuffled)
+      } else {
+        alert("No questions found in database. Please add some questions first.")
+      }
+    } catch (err) {
+      console.error("Failed to fetch questions", err)
+    }
+  }, [])
+
   const startTest = useCallback(() => {
-    const shuffled = shuffleArray(allQuestions).slice(0, QUESTION_COUNT)
-    setQuestions(shuffled)
+    if (questions.length === 0) return
     setCurrentIndex(0)
     setAnswers([])
     setTestState('testing')
-    setTimeLeft(shuffled[0].timeLimit)
+    setTimeLeft(questions[0].timeLimit)
     setSelectedAnswer(null)
     setShowFeedback(false)
-  }, [])
+  }, [questions])
 
   // Timer
   useEffect(() => {
@@ -78,6 +90,7 @@ export default function TestPage() {
     if (!currentQuestion) return
 
     const timeSpent = (currentQuestion.timeLimit - timeLeft) * 1000
+
     const newAnswer: Answer = {
       questionId: currentQuestion.id,
       selectedAnswer: answerIndex,
@@ -91,17 +104,14 @@ export default function TestPage() {
 
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
-        setCurrentIndex((prev) => prev + 1)
+        setCurrentIndex(prev => prev + 1)
         setTimeLeft(questions[currentIndex + 1].timeLimit)
         setSelectedAnswer(null)
         setShowFeedback(false)
       } else {
-        // Final scoring
         const testResult = calculateScore(updatedAnswers, questions)
         setResult(testResult)
         setTestState('completed')
-
-        // Save to database
         saveTestToDB(updatedAnswers, testResult)
       }
     }, 1600)
@@ -117,17 +127,13 @@ export default function TestPage() {
           result: testResult,
         }),
       })
-
       const data = await res.json()
-      if (res.ok && data.testId) {
-        setTestId(data.testId)
-      }
+      if (data.testId) setTestId(data.testId)
     } catch (err) {
       console.error('Failed to save test', err)
     }
   }
 
-  // Redirect to pricing with real testId
   useEffect(() => {
     if (testState === 'completed' && result && testId) {
       const resultString = encodeURIComponent(JSON.stringify({ id: testId, ...result }))
@@ -135,7 +141,11 @@ export default function TestPage() {
     }
   }, [testState, result, testId, router])
 
-  // Intro screen
+  // Fetch questions on mount
+  useEffect(() => {
+    fetchQuestions()
+  }, [fetchQuestions])
+
   if (testState === 'intro') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -145,8 +155,8 @@ export default function TestPage() {
             <CardTitle className="text-3xl">Cognitive Assessment</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={startTest} className="w-full text-lg py-6">
-              Start 20-Question Test
+            <Button onClick={startTest} className="w-full text-lg py-6" disabled={questions.length === 0}>
+              {questions.length === 0 ? "Loading questions..." : `Start ${QUESTION_COUNT}-Question Test`}
             </Button>
           </CardContent>
         </Card>
@@ -154,7 +164,6 @@ export default function TestPage() {
     )
   }
 
-  // Completed screen (fallback)
   if (testState === 'completed' && result) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -164,16 +173,13 @@ export default function TestPage() {
             <CardTitle>Assessment Complete!</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => {}} className="w-full" disabled>
-              Redirecting to pricing...
-            </Button>
+            <Button disabled>Redirecting to pricing...</Button>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  // Active test
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
 
