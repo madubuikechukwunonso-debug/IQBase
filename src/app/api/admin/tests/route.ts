@@ -6,8 +6,10 @@ import prisma from '@/lib/prisma'
 export async function GET() {
   const session = await getServerSession(authOptions)
 
+  console.log("Admin tests API - Session received:", session?.user) // Debugging line
+
   if (!session || session.user?.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 })
   }
 
   const tests = await prisma.test.findMany({
