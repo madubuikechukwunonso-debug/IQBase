@@ -33,12 +33,11 @@ export const authOptions: NextAuthOptions = {
 
         if (!isValid) return null;
 
-        // Return role here - this is critical
         return {
           id: user.id,
           email: user.email,
           name: user.name ?? null,
-          role: user.role,           // ← Must be returned
+          role: user.role,
         };
       },
     }),
@@ -66,15 +65,15 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;        // ← Must be saved in JWT
+        token.role = user.role;
       }
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.id) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string;   // ← Must be copied to session
+        session.user.role = token.role as string;
       }
       return session;
     },
@@ -86,7 +85,6 @@ export const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: "/login",
-    error: "/auth/error",
   },
 
   secret: process.env.NEXTAUTH_SECRET,
