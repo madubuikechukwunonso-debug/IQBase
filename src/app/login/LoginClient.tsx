@@ -45,8 +45,21 @@ export default function LoginClient() {
       return;
     }
 
-    router.push(callbackUrl);
-    router.refresh();
+    // Role-based redirect after successful login
+    if (result?.ok) {
+      // Fetch latest session to check role
+      const res = await fetch("/api/auth/session");
+      const session = await res.json();
+
+      if (session?.user?.role === "ADMIN") {
+        router.push("/admin");
+      } else {
+        router.push(callbackUrl);
+      }
+      router.refresh();
+    }
+
+    setLoading(false);
   }
 
   const handleSocialSignIn = (provider: string) => {
