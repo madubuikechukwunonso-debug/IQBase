@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "db:seed-admin": "tsx scripts/create-admin.ts",
     "add:ui": "npx shadcn-ui@latest add textarea select label toast"
   },
   "dependencies": {
