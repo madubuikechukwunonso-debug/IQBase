@@ -54,6 +54,6 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.5.3",
     "@types/nodemailer": "^6.4.15",
-    "tsx": "^4.19.3"          // ← Added this
+    "tsx": "^4.19.3"
   }
 }
