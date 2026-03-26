@@ -1,15 +1,14 @@
-// app/login/LoginClient.tsx
 "use client";
-
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Brain } from "lucide-react";
 
 export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";   // ← ONLY LINE CHANGED
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -53,7 +52,6 @@ export default function LoginClient() {
   const handleSocialSignIn = (provider: string) => {
     setLoading(true);
     setError(null);
-
     signIn(provider, { callbackUrl, redirect: false }).catch((err) => {
       setError(`Failed to sign in with ${provider}`);
       setLoading(false);
@@ -62,6 +60,14 @@ export default function LoginClient() {
 
   return (
     <div className="max-w-md w-full space-y-8">
+      {/* Homepage Logo */}
+      <div className="flex flex-col items-center justify-center gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
+          <Brain className="w-7 h-7 text-white" />
+        </div>
+        <span className="font-bold text-3xl tracking-tight">IQBase</span>
+      </div>
+
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Sign in to your account
