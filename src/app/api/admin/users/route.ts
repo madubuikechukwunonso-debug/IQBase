@@ -6,7 +6,8 @@ import prisma from '@/lib/prisma'
 export async function GET() {
   const session = await getServerSession(authOptions)
 
-  console.log("Admin users API - Session received:", session?.user) // Debugging line
+  // Debugging log
+  console.log("Admin /users API - Session:", session?.user)
 
   if (!session || session.user?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 })
