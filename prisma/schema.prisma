@@ -4,22 +4,23 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
+  id String @id @default(cuid())
+  email String @unique
+  name String?
   hashedPassword String?
   emailVerified DateTime?
-  role          UserRole  @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  tests         Test[]
-  payments      Payment[]
+  role UserRole @default(USER)
+  blocked Boolean @default(false)   // ← Added for admin block/unblock feature
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  accounts Account[]
+  sessions Session[]
+  tests Test[]
+  payments Payment[]
 }
 
 enum UserRole {
@@ -28,99 +29,99 @@ enum UserRole {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
-  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+  userId String
+  type String
+  provider String
+  providerAccountId String
+  refresh_token String? @db.Text
+  access_token String? @db.Text
+  expires_at Int?
+  token_type String?
+  scope String?
+  id_token String? @db.Text
+  session_state String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([provider, providerAccountId])
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+  sessionToken String @unique
+  userId String
+  expires DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
   identifier String
-  token      String   @unique
-  expires    DateTime
+  token String @unique
+  expires DateTime
   @@unique([identifier, token])
 }
 
 model Test {
-  id              String     @id @default(cuid())
-  userId          String?
-  user            User?      @relation(fields: [userId], references: [id])
-  score           Int?
-  percentile      Int?
-  category        String?
-  answers         Answer[]
-  startedAt       DateTime   @default(now())
-  completedAt     DateTime?
-  status          TestStatus @default(IN_PROGRESS)
-  logicalScore    Int?
-  patternScore    Int?
-  numericalScore  Int?
-  speedScore      Int?
-  pdfReport       Bytes?     // ← Added for premium PDF report storage
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  payments        Payment[]  // ← NEW: reverse relation so stats route can check paid status
+  id String @id @default(cuid())
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+  score Int?
+  percentile Int?
+  category String?
+  answers Answer[]
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  status TestStatus @default(IN_PROGRESS)
+  logicalScore Int?
+  patternScore Int?
+  numericalScore Int?
+  speedScore Int?
+  pdfReport Bytes? // ← Added for premium PDF report storage
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payments Payment[] // ← NEW: reverse relation so stats route can check paid status
 }
 
 model Answer {
-  id            String   @id @default(cuid())
-  testId        String
-  test          Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
-  questionId    String
-  questionType  String
-  difficulty    Int
+  id String @id @default(cuid())
+  testId String
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questionId String
+  questionType String
+  difficulty Int
   selectedAnswer Int
-  isCorrect     Boolean
-  timeSpent     Int
-  createdAt     DateTime @default(now())
+  isCorrect Boolean
+  timeSpent Int
+  createdAt DateTime @default(now())
 }
 
 model Payment {
-  id              String        @id @default(cuid())
-  userId          String?
-  user            User?         @relation(fields: [userId], references: [id])
-  testId          String?
-  test            Test?         @relation(fields: [testId], references: [id])
-  stripePaymentId String        @unique
-  amount          Int
-  currency        String        @default("usd")
-  tier            PaymentTier
-  status          PaymentStatus @default(PENDING)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id String @id @default(cuid())
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+  testId String?
+  test Test? @relation(fields: [testId], references: [id])
+  stripePaymentId String @unique
+  amount Int
+  currency String @default("usd")
+  tier PaymentTier
+  status PaymentStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Question {
-  id            String   @id @default(cuid())
-  type          String
-  difficulty    Int
-  question      String
-  options       String[]
+  id String @id @default(cuid())
+  type String
+  difficulty Int
+  question String
+  options String[]
   correctAnswer Int
-  explanation   String
-  timeLimit     Int
-  imageUrl      String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  explanation String
+  timeLimit Int
+  imageUrl String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum TestStatus {
