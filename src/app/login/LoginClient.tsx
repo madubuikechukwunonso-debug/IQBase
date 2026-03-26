@@ -45,9 +45,9 @@ export default function LoginClient() {
       return;
     }
 
-    // Role-based redirect after successful login
+    // Role-based redirect
     if (result?.ok) {
-      // Fetch latest session to check role
+      // Fetch latest session to get role
       const res = await fetch("/api/auth/session");
       const session = await res.json();
 
