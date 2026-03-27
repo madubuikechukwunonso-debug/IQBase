@@ -1,5 +1,5 @@
 // src/app/api/admin/generate-visual/route.ts
-// ✅ ULTRA-DIAGNOSTIC VERSION – shows exact error
+// ✅ DIAGNOSTIC VERSION – shows exact error
 
 import { generateImage } from 'ai';
 import { replicate } from '@ai-sdk/replicate';
@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    // ← Check for missing token (this is the #1 cause of 500s on Vercel)
     if (!process.env.REPLICATE_API_TOKEN) {
       throw new Error('REPLICATE_API_TOKEN is missing in Vercel environment variables');
     }
@@ -23,10 +22,9 @@ export async function POST(req: NextRequest) {
     const { image } = await generateImage({
       model,
       prompt: prompt.trim(),
-      aspectRatio: '1:1',        // official supported value for Flux-Schnell
+      aspectRatio: '1:1',
     });
 
-    // Correct way for AI SDK v6
     const base64 = Buffer.from(image.uint8Array).toString('base64');
     const dataUrl = `data:image/png;base64,${base64}`;
 
@@ -36,13 +34,13 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('=== FULL GENERATE-VISUAL ERROR ===');
+    console.error('=== FULL IMAGE GENERATION ERROR ===');
     console.error(error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
-        details: error.stack || 'No stack trace available',
+        error: error.message || 'Failed to generate image',
+        details: error.stack || 'No stack trace',
       },
       { status: 500 }
     );
