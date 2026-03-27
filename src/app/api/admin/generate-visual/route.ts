@@ -28,7 +28,8 @@ Output ONLY the JSON.`
 
   try {
     const result = await streamText({
-      model: google("gemini-1.5-flash-latest"),   // ← THIS IS THE FIX
+      // ✅ This is the stable, production-ready model name (September 2024 release)
+      model: google("gemini-1.5-flash-002"),
       system: systemPrompt,
       prompt: prompt,
       temperature: 0.7,
