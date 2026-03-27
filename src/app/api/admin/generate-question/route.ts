@@ -14,10 +14,10 @@ export async function POST(req: Request) {
 
   // Random theme to force originality and prevent repeats
   const themes = [
-    "space exploration", "ancient civilizations", "futuristic technology", 
-    "nature and ecosystems", "mythical creatures", "ocean mysteries", 
-    "city architecture", "quantum physics", "historical artifacts", 
-    "underwater worlds"
+    "science", "history", "culture", 
+    "nature and ecosystems", "food", "aquatic life", 
+    "technology", "biology", "historical artifacts", 
+    "government"
   ]
   const randomTheme = themes[Math.floor(Math.random() * themes.length)]
 
