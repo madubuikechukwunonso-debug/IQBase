@@ -1,6 +1,6 @@
 // src/app/api/admin/generate-question/route.ts
 import { groq } from "@ai-sdk/groq";
-import { generateText } from "ai";           // ← Changed to generateText (no stream)
+import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/session";
 
@@ -49,7 +49,8 @@ export async function POST(req: Request) {
   const systemPrompt = `You are an expert IQ test question creator for IQBase.
 Generate **exactly one** completely ORIGINAL and UNIQUE high-quality IQ question.
 Use the IQ-specific theme "${randomTheme}".
-Output ONLY valid JSON. No extra text, no markdown.
+
+Output ONLY valid JSON. No extra text, no markdown, no explanations.
 
 Required structure:
 {
@@ -59,24 +60,30 @@ Required structure:
   "options": [string, string, string, string],
   "correctAnswer": number (0-3),
   "explanation": string,
-  "timeLimit": number (30-90)
+  "timeLimit": number (30-90),
+  "visualDescription": "A highly detailed, vivid description of the visual that should accompany this question. Focus on geometric patterns, matrices, shapes, symmetry, colors, 3D objects, or diagrams that would help illustrate the question. Be specific about layout, colors, and style so it can be used directly as a prompt for image generation."
 }`;
 
   try {
     const { text } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq("llama-3.3-405b"),        // ← Upgraded to Llama 3.3 405B
       system: systemPrompt,
       prompt: prompt,
       temperature: 0.85,
     });
 
-    // Extract JSON from the response (Groq sometimes adds extra text)
+    // Extract JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found in response");
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    return NextResponse.json(parsed);   // ← Simple JSON response
+    // Fallback if visualDescription is missing
+    if (!parsed.visualDescription) {
+      parsed.visualDescription = parsed.question;
+    }
+
+    return NextResponse.json(parsed);
   } catch (error: any) {
     console.error("Groq Error:", error);
     return NextResponse.json(
