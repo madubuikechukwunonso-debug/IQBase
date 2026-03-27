@@ -1,6 +1,6 @@
 // src/app/api/admin/generate-visual/route.ts
 // ✅ CLEAN & FINAL VERSION FOR AI SDK v6 + @ai-sdk/replicate v2
-// (No experimental_, no "as any", no type conflicts)
+// (No experimental_, no casts, no Buffer conversion needed)
 
 import { generateImage } from 'ai';
 import { replicate } from '@ai-sdk/replicate';
@@ -23,9 +23,8 @@ export async function POST(req: NextRequest) {
       size: '1024x1024',
     });
 
-    // Convert binary image → base64 data URL (perfect for <img> + PDF)
-    const base64 = Buffer.from(image).toString('base64');
-    const dataUrl = `data:image/png;base64,${base64}`;
+    // ✅ NEW in AI SDK v6: image is a GeneratedFile object with .base64 already ready
+    const dataUrl = `data:image/png;base64,${image.base64}`;
 
     return NextResponse.json({
       success: true,
