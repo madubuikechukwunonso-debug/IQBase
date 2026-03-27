@@ -28,22 +28,28 @@ Output ONLY the JSON.`
 
   try {
     const result = await streamText({
-      model: google("gemini-1.5-flash"),
+      model: google("gemini-1.5-flash-latest"),   // ← THIS IS THE FIX
       system: systemPrompt,
       prompt: prompt,
       temperature: 0.7,
     })
 
     return result.toDataStreamResponse({
-      getErrorMessage: (error: unknown) => `REAL ERROR: ${error instanceof Error ? error.message : String(error)}`,
+      getErrorMessage: (error: unknown) => {
+        console.error("❌ Gemini Error:", error)
+        return `REAL ERROR: ${error instanceof Error ? error.message : String(error)}`
+      },
     })
   } catch (error: any) {
+    console.error("❌ FULL Gemini CATCH ERROR:", error)
+
     const errorStream = new ReadableStream({
       start(controller) {
         controller.enqueue(`REAL ERROR: ${error.message || "Unknown error"}\n`)
         controller.close()
       },
     })
+
     return new Response(errorStream, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     })
