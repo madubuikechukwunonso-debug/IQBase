@@ -72,9 +72,9 @@ Required structure:
       temperature: 0.85,
     })
 
-    return result.toDataStreamResponse({
-      getErrorMessage: (error: unknown) => `REAL ERROR: ${error instanceof Error ? error.message : String(error)}`,
-    })
+    // ✅ FIXED for AI SDK v6
+    return result.toTextStreamResponse()
+
   } catch (error: any) {
     console.error("❌ Groq Error:", error)
     const errorStream = new ReadableStream({
