@@ -13,6 +13,7 @@ export default function LoginClient() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,12 +59,12 @@ export default function LoginClient() {
     const email = prompt("Enter your email address to receive a reset link:");
     if (!email) return;
 
-    setLoading(true);
+    setForgotLoading(true);
     const result = await signIn("email", {
       email: email.trim(),
       redirect: false,
     });
-    setLoading(false);
+    setForgotLoading(false);
 
     if (result?.ok) {
       alert("✅ Magic reset link sent to your email! Check your inbox.");
@@ -181,15 +182,15 @@ export default function LoginClient() {
           </button>
         </div>
 
-        {/* FIXED Forgot Password Button */}
+        {/* Forgot Password Button */}
         <div className="text-sm text-center text-gray-500 dark:text-gray-400">
           <button
             type="button"
             onClick={handleForgotPassword}
-            disabled={loading}
-            className="text-indigo-600 hover:underline dark:text-indigo-400"
+            disabled={forgotLoading || loading}
+            className="text-indigo-600 hover:underline dark:text-indigo-400 disabled:opacity-50"
           >
-            Forgot your password?
+            {forgotLoading ? "Sending link..." : "Forgot your password?"}
           </button>
         </div>
       </form>
