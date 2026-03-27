@@ -3,8 +3,6 @@ import NextAuth from "next-auth"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { PrismaClient } from "@prisma/client"
 import Credentials from "next-auth/providers/credentials"
-import EmailProvider from "next-auth/providers/email"
-import nodemailer from "nodemailer"
 import bcryptjs from "bcryptjs"
 import type { JWT } from "next-auth/jwt"
 
@@ -20,78 +18,23 @@ const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log("🔍 [CREDENTIALS] Authorize called for:", credentials?.email)
-
-        if (!credentials?.email || !credentials?.password) {
-          console.log("❌ Missing credentials")
-          return null
-        }
+        if (!credentials?.email || !credentials?.password) return null
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string }
         })
 
-        console.log("👤 User found:", user ? { id: user.id, email: user.email, role: user.role, emailVerified: user.emailVerified } : "NOT FOUND")
-
-        if (!user || !user.hashedPassword) {
-          console.log("❌ No user or no hashedPassword")
-          return null
-        }
-
-        // ✅ TEMPORARILY relaxed for admin (so your existing admin can login)
-        if (!user.emailVerified && user.role !== "ADMIN") {
-          console.log("❌ Email not verified (and not admin)")
-          return null
-        }
+        if (!user || !user.hashedPassword) return null
 
         const isValid = await bcryptjs.compare(
           credentials.password as string,
           user.hashedPassword
         )
 
-        console.log("🔑 Password valid?", isValid)
+        if (!isValid) return null
 
-        return isValid ? user : null
+        return user
       }
-    }),
-
-    EmailProvider({
-      server: {
-        host: process.env.EMAIL_SERVER_HOST,
-        port: Number(process.env.EMAIL_SERVER_PORT),
-        auth: {
-          user: process.env.EMAIL_SERVER_USER,
-          pass: process.env.EMAIL_SERVER_PASSWORD,
-        },
-      },
-      from: process.env.EMAIL_FROM,
-      sendVerificationRequest: async ({ identifier: email, url }) => {
-        const transport = nodemailer.createTransport({
-          host: process.env.EMAIL_SERVER_HOST,
-          port: Number(process.env.EMAIL_SERVER_PORT),
-          auth: {
-            user: process.env.EMAIL_SERVER_USER,
-            pass: process.env.EMAIL_SERVER_PASSWORD,
-          },
-        })
-
-        await transport.sendMail({
-          to: email,
-          from: process.env.EMAIL_FROM,
-          subject: `Your magic link for IQBase`,
-          html: `
-            <div style="font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 40px; background: #0a0a0a; color: white; border-radius: 16px;">
-              <h1 style="font-size: 28px; margin-bottom: 8px;">Welcome to IQBase 👋</h1>
-              <p style="font-size: 18px; color: #a3a3a3;">Click the button below to ${url.includes("verify") ? "verify your email and create your account" : "reset your password"}:</p>
-              <a href="${url}" style="display: inline-block; margin: 24px 0; padding: 16px 32px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 18px;">
-                ${url.includes("verify") ? "Create my account" : "Reset password"}
-              </a>
-              <p style="color: #666; font-size: 14px;">Link expires in 15 minutes.</p>
-              <p style="color: #666; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
-            </div>
-          `,
-        })
-      },
     }),
   ],
 
