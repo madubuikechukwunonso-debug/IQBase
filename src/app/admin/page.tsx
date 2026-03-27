@@ -75,7 +75,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<any>(null)
   const [users, setUsers] = useState<any[]>([])
   const [tests, setTests] = useState<any[]>([])
-  const [questions, setQuestions] = useState<any[]>([]) // NEW: questions list
+  const [questions, setQuestions] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
 
@@ -83,7 +83,7 @@ export default function AdminPage() {
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
-  const [lastType, setLastType] = useState<"text" | "visual" | null>(null) // tracks last generation type for auto-refresh on cancel
+  const [lastType, setLastType] = useState<"text" | "visual" | null>(null)
 
   // Hardcoded prompts
   const hardcodedPrompts = [
@@ -120,7 +120,7 @@ export default function AdminPage() {
       fetch("/api/admin/stats"),
       fetch("/api/admin/users"),
       fetch("/api/admin/tests"),
-      fetch("/api/admin/questions")   // NEW: fetch questions
+      fetch("/api/admin/questions")
     ])
     const statsData = await statsRes.json()
     const usersData = await usersRes.json()
@@ -149,7 +149,6 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // NEW: delete question from DB
   const deleteQuestion = async (questionId: string) => {
     if (!confirm("Delete this question permanently?")) return
     await fetch(`/api/admin/questions/${questionId}`, { method: "DELETE" })
@@ -163,10 +162,8 @@ export default function AdminPage() {
     setDebugOpen(true)
     setDebugLogs([])
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
-
     addLog("🚀 Starting GROQ (text) generation...", "info")
     addLog(`Prompt: ${randomPrompt}`, "info")
-
     try {
       const res = await fetch("/api/admin/generate-question", {
         method: "POST",
@@ -174,20 +171,17 @@ export default function AdminPage() {
         body: JSON.stringify({ prompt: randomPrompt }),
       })
       if (!res.ok) throw new Error("Generation failed")
-
       const reader = res.body?.getReader()
       if (!reader) throw new Error("No stream reader")
       const decoder = new TextDecoder()
       let buffer = ""
       let cleanJsonText = ""
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const chunk = decoder.decode(value, { stream: true })
         buffer += chunk
         addLog(chunk, "info")
-
         const lines = chunk.split("\n")
         for (const line of lines) {
           if (line.startsWith("0:")) {
@@ -200,12 +194,11 @@ export default function AdminPage() {
           }
         }
       }
-
       const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
         setGeneratedQuestion(parsed)
-        setLastType("text")   // remember type for cancel auto-refresh
+        setLastType("text")
         addLog("✅ Groq text question parsed!", "success")
       } else {
         throw new Error("Could not find valid JSON")
@@ -224,10 +217,8 @@ export default function AdminPage() {
     setDebugOpen(true)
     setDebugLogs([])
     const randomVisualPrompt = visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
-
     addLog("🚀 Starting GEMINI (visual) generation...", "info")
     addLog(`Prompt: ${randomVisualPrompt}`, "info")
-
     try {
       const res = await fetch("/api/admin/generate-visual", {
         method: "POST",
@@ -235,20 +226,17 @@ export default function AdminPage() {
         body: JSON.stringify({ prompt: randomVisualPrompt }),
       })
       if (!res.ok) throw new Error("Generation failed")
-
       const reader = res.body?.getReader()
       if (!reader) throw new Error("No stream reader")
       const decoder = new TextDecoder()
       let buffer = ""
       let cleanJsonText = ""
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const chunk = decoder.decode(value, { stream: true })
         buffer += chunk
         addLog(chunk, "info")
-
         const lines = chunk.split("\n")
         for (const line of lines) {
           if (line.startsWith("0:")) {
@@ -261,12 +249,11 @@ export default function AdminPage() {
           }
         }
       }
-
       const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
         setGeneratedQuestion(parsed)
-        setLastType("visual")   // remember type for cancel auto-refresh
+        setLastType("visual")
         addLog("✅ Gemini visual question parsed!", "success")
       } else {
         throw new Error("Could not find valid JSON")
@@ -278,13 +265,10 @@ export default function AdminPage() {
     }
   }
 
-  // NEW: Cancel button logic – close modal + auto-generate new question of same type
   const handleCancel = () => {
     setAiModalOpen(false)
     setGeneratedQuestion(null)
     setDebugOpen(false)
-
-    // Auto spin up a new unique question of the same type
     if (lastType === "text") {
       generateRandomQuestion()
     } else if (lastType === "visual") {
@@ -305,7 +289,7 @@ export default function AdminPage() {
         setAiModalOpen(false)
         setGeneratedQuestion(null)
         setDebugOpen(false)
-        fetchData() // refresh questions list
+        fetchData()
       } else {
         alert("Failed to save question")
       }
@@ -370,7 +354,6 @@ export default function AdminPage() {
           >
             Tests
           </button>
-          {/* NEW: Questions tab */}
           <button
             onClick={() => setActiveTab("questions")}
             className={`px-6 py-3 font-medium ${activeTab === "questions" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
@@ -382,7 +365,6 @@ export default function AdminPage() {
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {/* your existing overview cards unchanged */}
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -525,7 +507,7 @@ export default function AdminPage() {
           </Card>
         )}
 
-        {/* NEW: QUESTIONS TAB */}
+        {/* QUESTIONS TAB */}
         {activeTab === "questions" && (
           <Card>
             <CardHeader>
@@ -591,7 +573,7 @@ export default function AdminPage() {
         <span className="font-medium">Generate Random Question</span>
       </button>
 
-      {/* AI Modal – now with TWO buttons + CANCEL */}
+      {/* AI Modal */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -626,10 +608,24 @@ export default function AdminPage() {
                 </Button>
               </div>
 
+              {/* UPDATED PREVIEW LOGIC FOR REAL IMAGES */}
               {generatedQuestion && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
                   <h3 className="font-semibold mb-3">Generated Question</h3>
+
+                  {/* REAL IMAGE PREVIEW (only shows when imageUrl exists) */}
+                  {generatedQuestion.imageUrl && (
+                    <div className="mb-6 border rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                      <img
+                        src={generatedQuestion.imageUrl}
+                        alt="Generated Visual IQ Question"
+                        className="w-full h-auto max-h-96 object-contain mx-auto"
+                      />
+                    </div>
+                  )}
+
                   <p className="text-lg leading-relaxed mb-6">{generatedQuestion.question}</p>
+
                   <div className="space-y-3">
                     {generatedQuestion.options.map((opt: string, i: number) => (
                       <div
@@ -642,7 +638,6 @@ export default function AdminPage() {
                     ))}
                   </div>
 
-                  {/* Save + Cancel buttons */}
                   <div className="flex gap-3 mt-6">
                     <Button onClick={saveGeneratedQuestion} className="flex-1">
                       Save to Question Bank
