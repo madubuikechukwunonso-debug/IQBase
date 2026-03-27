@@ -96,6 +96,7 @@ export default function AdminPage() {
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
   ]
+
   const visualPrompts = [
     "Create a visual pattern or matrix IQ question that requires observing shapes, colors or symbols.",
     "Create a spatial reasoning question with rotating figures or 3D cubes.",
@@ -153,7 +154,7 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === GROQ - Text Question + Visual Description ===
+  // === GROQ - Text Only (no image) ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
@@ -161,7 +162,7 @@ export default function AdminPage() {
     setDebugLogs([])
 
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
-    addLog("🚀 Starting GROQ generation (question + visual description)...", "info")
+    addLog("🚀 Starting GROQ generation (text only)...", "info")
     addLog(`Prompt: ${randomPrompt} | Difficulty: ${selectedDifficulty}`, "info")
 
     try {
@@ -174,39 +175,21 @@ export default function AdminPage() {
         }),
       })
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP ${res.status}`)
-      }
+      if (!res.ok) throw new Error("Generation failed")
 
       const parsed = await res.json()
-
-      // Generate image using visualDescription from Groq
-      const imageRes = await fetch("/api/admin/generate-visual", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: parsed.visualDescription || parsed.question }),
-      })
-
-      const imageData = await imageRes.json()
-      if (!imageRes.ok || !imageData.success) {
-        throw new Error(imageData.error || "Image generation failed")
-      }
-
-      const fullQuestion = { ...parsed, imageUrl: imageData.image }
-      setGeneratedQuestion(fullQuestion)
+      setGeneratedQuestion(parsed)
       setLastType("text")
-      addLog("✅ Groq question + Hugging Face image ready!", "success")
+      addLog("✅ Groq text question ready!", "success")
     } catch (err: any) {
-      const errorMsg = err.message || "Unknown error"
-      addLog(`❌ ${errorMsg}`, "error")
+      addLog(`❌ ${err.message}`, "error")
       console.error(err)
     } finally {
       setGenerating(false)
     }
   }
 
-  // === REPLICATE / Hugging Face - Visual Question ===
+  // === REPLICATE - Visual Question (Groq first → then image using better description) ===
   const generateVisualQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
@@ -227,13 +210,11 @@ export default function AdminPage() {
         }),
       })
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP ${res.status}`)
-      }
+      if (!res.ok) throw new Error("Question generation failed")
 
       const parsed = await res.json()
 
+      // Use Groq's visualDescription for image generation
       const imageRes = await fetch("/api/admin/generate-visual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -248,10 +229,9 @@ export default function AdminPage() {
       const fullQuestion = { ...parsed, imageUrl: imageData.image }
       setGeneratedQuestion(fullQuestion)
       setLastType("visual")
-      addLog("✅ Groq question + Hugging Face image ready!", "success")
+      addLog("✅ Groq question + relevant image ready!", "success")
     } catch (err: any) {
-      const errorMsg = err.message || "Unknown error"
-      addLog(`❌ ${errorMsg}`, "error")
+      addLog(`❌ ${err.message}`, "error")
       console.error(err)
     } finally {
       setGenerating(false)
@@ -390,12 +370,7 @@ export default function AdminPage() {
                 <CardTitle>Users ({filteredUsers.length})</CardTitle>
                 <div className="relative w-72">
                   <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
+                  <Input placeholder="Search email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
               </div>
             </CardHeader>
@@ -413,18 +388,10 @@ export default function AdminPage() {
                   {filteredUsers.map((user) => (
                     <tr key={user.id} className="border-b last:border-0">
                       <td className="py-3 px-4">{user.email}</td>
+                      <td className="py-3 px-4"><Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge></td>
+                      <td className="py-3 px-4">{user.blocked ? <Badge variant="destructive">Blocked</Badge> : <Badge variant="outline">Active</Badge>}</td>
                       <td className="py-3 px-4">
-                        <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        {user.blocked ? <Badge variant="destructive">Blocked</Badge> : <Badge variant="outline">Active</Badge>}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant={user.blocked ? "default" : "destructive"}
-                          onClick={() => blockUser(user.id, !user.blocked)}
-                        >
+                        <Button size="sm" variant={user.blocked ? "default" : "destructive"} onClick={() => blockUser(user.id, !user.blocked)}>
                           <ShieldX className="w-3 h-3 mr-1" />
                           {user.blocked ? "Unblock" : "Block"}
                         </Button>
@@ -460,11 +427,7 @@ export default function AdminPage() {
                       <td className="py-3 px-4 font-semibold">{test.score}</td>
                       <td className="py-3 px-4 text-muted-foreground">{new Date(test.createdAt).toLocaleDateString()}</td>
                       <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteTest(test.id)}
-                        >
+                        <Button size="sm" variant="destructive" onClick={() => deleteTest(test.id)}>
                           <Trash2 className="w-3 h-3 mr-1" />
                           Delete
                         </Button>
@@ -485,12 +448,7 @@ export default function AdminPage() {
                 <CardTitle>Questions ({filteredQuestions.length})</CardTitle>
                 <div className="relative w-72">
                   <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search question..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
+                  <Input placeholder="Search question..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
               </div>
             </CardHeader>
@@ -515,11 +473,7 @@ export default function AdminPage() {
                         <Badge variant={q.difficulty >= 4 ? "destructive" : "outline"}>{q.difficulty}</Badge>
                       </td>
                       <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteQuestion(q.id)}
-                        >
+                        <Button size="sm" variant="destructive" onClick={() => deleteQuestion(q.id)}>
                           <Trash2 className="w-3 h-3 mr-1" />
                           Delete
                         </Button>
@@ -551,7 +505,6 @@ export default function AdminPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-background rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
           >
-            {/* Header */}
             <div className="p-6 border-b flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Sparkles className="w-6 h-6 text-purple-500" />
@@ -560,7 +513,6 @@ export default function AdminPage() {
               <button onClick={() => { setAiModalOpen(false); setDebugOpen(false) }} className="text-2xl leading-none">×</button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-auto p-6 space-y-6">
               <div className="flex items-center gap-3">
                 <span className="font-medium text-sm">Difficulty (Groq only):</span>
@@ -570,9 +522,7 @@ export default function AdminPage() {
                       key={level}
                       onClick={() => setSelectedDifficulty(level)}
                       className={`w-8 h-8 rounded-lg font-bold text-sm flex items-center justify-center transition-all ${
-                        selectedDifficulty === level
-                          ? "bg-purple-600 text-white shadow-md"
-                          : "bg-muted hover:bg-muted-foreground/20"
+                        selectedDifficulty === level ? "bg-purple-600 text-white shadow-md" : "bg-muted hover:bg-muted-foreground/20"
                       }`}
                     >
                       {level}
@@ -629,7 +579,6 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Fixed Footer Buttons */}
             <div className="p-6 border-t flex gap-3 bg-background">
               <Button onClick={saveGeneratedQuestion} className="flex-1" disabled={!generatedQuestion}>
                 Save to Question Bank
@@ -642,12 +591,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* LIVE DEBUG CONSOLE */}
-      <DebugConsole
-        isOpen={debugOpen}
-        logs={debugLogs}
-        onClose={() => setDebugOpen(false)}
-      />
+      <DebugConsole isOpen={debugOpen} logs={debugLogs} onClose={() => setDebugOpen(false)} />
     </div>
   )
 }
