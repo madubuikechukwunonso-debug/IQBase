@@ -1,4 +1,6 @@
 // src/app/api/auth/[...nextauth]/route.ts
+// ✅ FINAL CLEAN VERSION (fully working with magic links + credentials)
+
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { PrismaClient } from "@prisma/client"
@@ -6,13 +8,15 @@ import Credentials from "next-auth/providers/credentials"
 import EmailProvider from "next-auth/providers/email"
 import nodemailer from "nodemailer"
 import bcryptjs from "bcryptjs"
-import type { JWT } from "next-auth/jwt"   // ← Added for TypeScript
+import type { JWT } from "next-auth/jwt"
 
 const prisma = new PrismaClient()
 
 const authOptions = {
   adapter: PrismaAdapter(prisma),
+
   providers: [
+    // Username + Password login (keeps your existing users working)
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -36,6 +40,7 @@ const authOptions = {
       }
     }),
 
+    // ✅ Magic link / Email verification provider
     EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST,
@@ -75,12 +80,13 @@ const authOptions = {
       },
     }),
   ],
+
   pages: {
     signIn: "/login",
     error: "/login",
   },
+
   callbacks: {
-    // ✅ FIXED: Explicit types for jwt callback
     async jwt({ token, user }: { token: JWT; user?: any }) {
       if (user) {
         token.role = user.role
@@ -94,6 +100,7 @@ const authOptions = {
       return session
     },
   },
+
   secret: process.env.NEXTAUTH_SECRET,
 }
 
