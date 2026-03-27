@@ -46,17 +46,31 @@ export default function LoginClient() {
       return;
     }
 
-    // ✅ SUCCESS - Role-based redirect with forced session refresh
     if (result?.ok) {
-      // Small delay + refresh to ensure session cookie is set
-      setTimeout(() => {
-        router.refresh(); // Force NextAuth to load the latest session
-        router.push(callbackUrl);
-      }, 100);
+      router.refresh();
+      router.push(callbackUrl);
     }
 
     setLoading(false);
   }
+
+  const handleForgotPassword = async () => {
+    const email = prompt("Enter your email address to receive a reset link:");
+    if (!email) return;
+
+    setLoading(true);
+    const result = await signIn("email", {
+      email: email.trim(),
+      redirect: false,
+    });
+    setLoading(false);
+
+    if (result?.ok) {
+      alert("✅ Magic reset link sent to your email! Check your inbox.");
+    } else {
+      alert("Failed to send reset link. Please try again.");
+    }
+  };
 
   const handleSocialSignIn = (provider: string) => {
     setLoading(true);
@@ -167,13 +181,16 @@ export default function LoginClient() {
           </button>
         </div>
 
+        {/* FIXED Forgot Password Button */}
         <div className="text-sm text-center text-gray-500 dark:text-gray-400">
-          <Link
-            href="/forgot-password"
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={loading}
             className="text-indigo-600 hover:underline dark:text-indigo-400"
           >
             Forgot your password?
-          </Link>
+          </button>
         </div>
       </form>
 
