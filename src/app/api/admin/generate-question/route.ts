@@ -12,23 +12,20 @@ export async function POST(req: Request) {
 
   const { prompt } = await req.json()
 
-  // Your existing hardcoded prompts (kept exactly as before)
-  const hardcodedPrompts = [
-    "Create a challenging logical reasoning question about conditional statements and syllogisms.",
-    "Create a pattern recognition question with numbers or shapes that requires deep observation.",
-    "Create a numerical reasoning question involving percentages, ratios or sequences.",
-    "Create a processing speed question that tests quick decision making.",
-    "Create a logical puzzle question with multiple steps and clear options.",
-    "Create a visual pattern or matrix question suitable for IQ tests.",
-    "Create a numerical word problem that requires careful calculation.",
-    "Create a logical analogy or relationship question.",
+  // Random theme to force originality and prevent repeats
+  const themes = [
+    "space exploration", "ancient civilizations", "futuristic technology", 
+    "nature and ecosystems", "mythical creatures", "ocean mysteries", 
+    "city architecture", "quantum physics", "historical artifacts", 
+    "underwater worlds"
   ]
-  const finalPrompt = prompt || hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
-
-  console.log("🚀 Groq AI Generator started with prompt:", finalPrompt)
+  const randomTheme = themes[Math.floor(Math.random() * themes.length)]
 
   const systemPrompt = `You are an expert IQ test question creator for IQBase.
-Generate **exactly one** valid JSON object. No extra text, no markdown, no explanations outside the JSON.
+Generate **exactly one** completely ORIGINAL and UNIQUE high-quality IQ question.
+Never repeat common patterns or questions you have made before.
+Use the theme "${randomTheme}" to make it fresh and different every time.
+Output ONLY valid JSON. No extra text, no markdown.
 
 Required structure:
 {
@@ -39,35 +36,27 @@ Required structure:
   "correctAnswer": number (0-3),
   "explanation": string,
   "timeLimit": number (30-90)
-}
-
-Output ONLY the JSON.`
+}`
 
   try {
     const result = await streamText({
-      model: groq("llama-3.3-70b-versatile"),   // Best free Groq model for structured IQ questions
+      model: groq("llama-3.3-70b-versatile"),
       system: systemPrompt,
-      prompt: finalPrompt,
-      temperature: 0.7,
+      prompt: prompt,
+      temperature: 0.85,   // higher = more originality and variety
     })
 
-    // Stream response with live tokens + real error forwarding to your debug console
     return result.toDataStreamResponse({
-      getErrorMessage: (error: unknown) => {
-        console.error("❌ Groq Error forwarded:", error)
-        return `REAL ERROR: ${error instanceof Error ? error.message : String(error)}`
-      },
+      getErrorMessage: (error: unknown) => `REAL ERROR: ${error instanceof Error ? error.message : String(error)}`,
     })
   } catch (error: any) {
-    console.error("❌ FULL Groq CATCH ERROR:", error)
-
+    console.error("❌ Groq Error:", error)
     const errorStream = new ReadableStream({
       start(controller) {
         controller.enqueue(`REAL ERROR: ${error.message || "Unknown error"}\n`)
         controller.close()
       },
     })
-
     return new Response(errorStream, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     })
