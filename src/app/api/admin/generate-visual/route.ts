@@ -10,14 +10,13 @@ export async function POST(req: NextRequest) {
     }
 
     const HF_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
-
     if (!HF_TOKEN) {
-      return NextResponse.json({ error: "Hugging Face token is missing" }, { status: 500 });
+      return NextResponse.json({ error: "HUGGINGFACE_API_TOKEN is missing" }, { status: 500 });
     }
 
-    // Using Flux Schnell on Hugging Face (free tier)
+    // New Hugging Face Router endpoint (required in 2026)
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+      "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
       {
         method: "POST",
         headers: {
