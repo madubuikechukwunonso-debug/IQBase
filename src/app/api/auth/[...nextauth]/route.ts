@@ -9,7 +9,6 @@ import bcryptjs from "bcryptjs"
 
 const prisma = new PrismaClient()
 
-// ← authOptions is now internal (not exported) → fixes the type error
 const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -20,11 +19,19 @@ const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
+
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string }
         })
-        if (!user || !user.password || !user.emailVerified) return null
-        const isValid = await bcryptjs.compare(credentials.password as string, user.password)
+
+        // ✅ FIXED: Use hashedPassword (the actual field in your Prisma schema)
+        if (!user || !user.hashedPassword || !user.emailVerified) return null
+
+        const isValid = await bcryptjs.compare(
+          credentials.password as string,
+          user.hashedPassword
+        )
+
         return isValid ? user : null
       }
     }),
