@@ -14,7 +14,6 @@ const authOptions = {
   adapter: PrismaAdapter(prisma),
 
   providers: [
-    // Username + Password login (your existing users)
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -27,7 +26,11 @@ const authOptions = {
           where: { email: credentials.email as string }
         })
 
-        if (!user || !user.hashedPassword || !user.emailVerified) return null
+        if (!user || !user.hashedPassword) return null
+
+        // ✅ FIXED: Allow ADMIN to login even if email is not verified (backward compatibility)
+        // Normal users still require email verification
+        if (!user.emailVerified && user.role !== "ADMIN") return null
 
         const isValid = await bcryptjs.compare(
           credentials.password as string,
@@ -38,7 +41,6 @@ const authOptions = {
       }
     }),
 
-    // Magic link provider (used by register-magic and forgot password)
     EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST,
