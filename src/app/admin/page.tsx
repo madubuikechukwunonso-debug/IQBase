@@ -78,16 +78,13 @@ export default function AdminPage() {
   const [questions, setQuestions] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
-
   // AI Modal
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
   const [lastType, setLastType] = useState<"text" | "visual" | null>(null)
-
   // NEW: Difficulty selector for Groq text questions
   const [selectedDifficulty, setSelectedDifficulty] = useState(3)
-
   // Hardcoded prompts
   const hardcodedPrompts = [
     "Create a challenging logical reasoning question about conditional statements and syllogisms.",
@@ -98,18 +95,15 @@ export default function AdminPage() {
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
   ]
-
   const visualPrompts = [
     "Create a visual pattern or matrix IQ question that requires observing shapes, colors or symbols.",
     "Create a spatial reasoning question with rotating figures or 3D cubes.",
     "Create a mirror-image or symmetry IQ question.",
     "Create a visual analogy or figure completion question.",
   ]
-
   // Debug console
   const [debugOpen, setDebugOpen] = useState(false)
   const [debugLogs, setDebugLogs] = useState<{ id: number; text: string; type: "info" | "error" | "success" }[]>([])
-
   const addLog = (text: string, type: "info" | "error" | "success" = "info") => {
     setDebugLogs((prev) => [...prev, { id: Date.now(), text, type }])
   }
@@ -170,9 +164,9 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/generate-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           prompt: randomPrompt,
-          difficulty: selectedDifficulty 
+          difficulty: selectedDifficulty
         }),
       })
       if (!res.ok) throw new Error("Generation failed")
@@ -215,23 +209,41 @@ export default function AdminPage() {
     }
   }
 
-  // === GEMINI - Visual / Image Questions ===
+  // === REPLICATE - Visual / Image Questions (NEW INTEGRATION) ===
   const generateVisualQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
     setDebugOpen(true)
     setDebugLogs([])
     const randomVisualPrompt = visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
-    addLog("🚀 Starting GEMINI (visual) generation...", "info")
+    addLog("🚀 Starting REPLICATE (Flux visual image) generation...", "info")
     addLog(`Prompt: ${randomVisualPrompt}`, "info")
+
     try {
-      const res = await fetch("/api/admin/generate-visual", {
+      // 1. Generate the visual image using the new Replicate route
+      const imageRes = await fetch("/api/admin/generate-visual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: randomVisualPrompt }),
       })
-      if (!res.ok) throw new Error("Generation failed")
-      const reader = res.body?.getReader()
+      if (!imageRes.ok) throw new Error("Image generation failed")
+      const imageData = await imageRes.json()
+      if (!imageData.success) throw new Error(imageData.error || "Image generation failed")
+      const imageUrl = imageData.image
+      addLog("✅ Replicate Flux image generated!", "success")
+
+      // 2. Generate matching text question using existing Groq route
+      addLog("🚀 Generating matching text question (Groq)...", "info")
+      const textRes = await fetch("/api/admin/generate-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: randomVisualPrompt,
+          difficulty: selectedDifficulty
+        }),
+      })
+      if (!textRes.ok) throw new Error("Text generation failed")
+      const reader = textRes.body?.getReader()
       if (!reader) throw new Error("No stream reader")
       const decoder = new TextDecoder()
       let buffer = ""
@@ -257,11 +269,13 @@ export default function AdminPage() {
       const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
-        setGeneratedQuestion(parsed)
+        // Merge image into the question object so the preview works perfectly
+        const fullQuestion = { ...parsed, imageUrl }
+        setGeneratedQuestion(fullQuestion)
         setLastType("visual")
-        addLog("✅ Gemini visual question parsed!", "success")
+        addLog("✅ Full visual question + image ready!", "success")
       } else {
-        throw new Error("Could not find valid JSON")
+        throw new Error("Could not parse text question")
       }
     } catch (err: any) {
       addLog(`❌ ${err.message}`, "error")
@@ -337,7 +351,6 @@ export default function AdminPage() {
           <Badge variant="outline">Admin Dashboard</Badge>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         {/* Tabs */}
         <div className="flex border-b mb-6">
@@ -632,7 +645,7 @@ export default function AdminPage() {
                   className="py-7 text-lg bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center gap-2"
                 >
                   {generating ? <Loader2 className="animate-spin" /> : <ImageIcon />}
-                  Gemini – Visual Question
+                  Replicate – Visual Question
                 </Button>
               </div>
 
@@ -640,8 +653,7 @@ export default function AdminPage() {
               {generatedQuestion && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
                   <h3 className="font-semibold mb-3">Generated Question</h3>
-
-                  {/* Real Image Preview */}
+                  {/* Real Image Preview (now correctly populated) */}
                   {generatedQuestion.imageUrl && (
                     <div className="mb-6 border rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
                       <img
@@ -651,9 +663,7 @@ export default function AdminPage() {
                       />
                     </div>
                   )}
-
                   <p className="text-lg leading-relaxed mb-6">{generatedQuestion.question}</p>
-
                   <div className="space-y-3">
                     {generatedQuestion.options.map((opt: string, i: number) => (
                       <div
