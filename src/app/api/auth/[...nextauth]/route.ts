@@ -20,22 +20,36 @@ const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
+        console.log("🔍 [CREDENTIALS] Authorize called for:", credentials?.email)
+
+        if (!credentials?.email || !credentials?.password) {
+          console.log("❌ Missing credentials")
+          return null
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string }
         })
 
-        if (!user || !user.hashedPassword) return null
+        console.log("👤 User found:", user ? { id: user.id, email: user.email, role: user.role, emailVerified: user.emailVerified } : "NOT FOUND")
 
-        // ✅ FIXED: Allow ADMIN to login even if email is not verified (backward compatibility)
-        // Normal users still require email verification
-        if (!user.emailVerified && user.role !== "ADMIN") return null
+        if (!user || !user.hashedPassword) {
+          console.log("❌ No user or no hashedPassword")
+          return null
+        }
+
+        // ✅ TEMPORARILY relaxed for admin (so your existing admin can login)
+        if (!user.emailVerified && user.role !== "ADMIN") {
+          console.log("❌ Email not verified (and not admin)")
+          return null
+        }
 
         const isValid = await bcryptjs.compare(
           credentials.password as string,
           user.hashedPassword
         )
+
+        console.log("🔑 Password valid?", isValid)
 
         return isValid ? user : null
       }
@@ -88,15 +102,11 @@ const authOptions = {
 
   callbacks: {
     async jwt({ token, user }: { token: JWT; user?: any }) {
-      if (user) {
-        token.role = user.role
-      }
+      if (user) token.role = user.role
       return token
     },
     async session({ session, token }: { session: any; token: JWT }) {
-      if (session.user) {
-        (session.user as any).role = token.role
-      }
+      if (session.user) (session.user as any).role = token.role
       return session
     },
   },
