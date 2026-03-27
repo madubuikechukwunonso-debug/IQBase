@@ -1,4 +1,6 @@
 // src/app/api/admin/generate-visual/route.ts
+// ✅ FIXED: Final working version for AI SDK v4 + Replicate
+
 import { experimental_generateImage as generateImage } from 'ai';
 import { replicate } from '@ai-sdk/replicate';
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,14 +16,15 @@ export async function POST(req: NextRequest) {
     const model = replicate.image('black-forest-labs/flux-schnell');
 
     const { image } = await generateImage({
-      // ← Temporary type cast to fix the V1/V2 conflict (official workaround)
+      // Type cast required due to V1/V2 mismatch in your current AI SDK versions
       model: model as any,
       prompt: prompt.trim(),
+      // ✅ CHANGED: AI SDK v4 uses "n" (not "numOutputs")
+      n: 1,
       size: '1024x1024',
-      numOutputs: 1,
     });
 
-    // Convert binary image → base64 data URL (perfect for <img> + PDF)
+    // Convert binary image → base64 data URL (perfect for <img> and PDF)
     const base64 = Buffer.from(image).toString('base64');
     const dataUrl = `data:image/png;base64,${base64}`;
 
