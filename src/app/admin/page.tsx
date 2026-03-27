@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
@@ -18,13 +17,60 @@ import {
   Loader2,
   CheckCircle,
   ShieldX,
-  Trash2
+  Trash2,
+  Terminal
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+
+// === DEBUG CONSOLE COMPONENT (popup terminal that shows live AI streaming tokens) ===
+const DebugConsole = ({ isOpen, logs, onClose }: {
+  isOpen: boolean
+  logs: { id: number; text: string; type: "info" | "error" | "success" }[]
+  onClose: () => void
+}) => {
+  if (!isOpen) return null
+  return (
+    <div className="fixed bottom-6 right-6 w-96 h-96 bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl flex flex-col z-[99999] overflow-hidden">
+      <div className="bg-zinc-900 px-4 py-3 flex items-center justify-between border-b">
+        <div className="flex items-center gap-2 text-emerald-400">
+          <Terminal className="w-5 h-5" />
+          <span className="font-mono text-sm font-bold">AI LIVE CONSOLE</span>
+        </div>
+        <button onClick={onClose} className="text-zinc-400 hover:text-white">
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      <div className="flex-1 p-4 font-mono text-xs overflow-auto bg-black text-zinc-100 space-y-1">
+        {logs.length === 0 ? (
+          <div className="text-zinc-500 italic">Waiting for AI response... (streaming tokens will appear here live)</div>
+        ) : (
+          logs.map((log) => (
+            <div
+              key={log.id}
+              className={`flex gap-2 ${
+                log.type === "error"
+                  ? "text-red-400"
+                  : log.type === "success"
+                  ? "text-emerald-400"
+                  : "text-sky-300"
+              }`}
+            >
+              <span className="text-zinc-500">[AI]</span>
+              <span className="whitespace-pre-wrap">{log.text}</span>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="p-3 text-[10px] text-zinc-500 border-t bg-zinc-900 text-center font-mono">
+        LIVE AI STREAM • gpt-4o-mini tokens
+      </div>
+    </div>
+  )
+}
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -33,12 +79,10 @@ export default function AdminPage() {
   const [tests, setTests] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
-
   // AI Modal - Automatic Generation
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
-
   // Hardcoded prompts for random generation
   const hardcodedPrompts = [
     "Create a challenging logical reasoning question about conditional statements and syllogisms.",
@@ -50,6 +94,14 @@ export default function AdminPage() {
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
   ]
+
+  // === NEW: Debug console states ===
+  const [debugOpen, setDebugOpen] = useState(false)
+  const [debugLogs, setDebugLogs] = useState<{ id: number; text: string; type: "info" | "error" | "success" }[]>([])
+
+  const addLog = (text: string, type: "info" | "error" | "success" = "info") => {
+    setDebugLogs((prev) => [...prev, { id: Date.now(), text, type }])
+  }
 
   useEffect(() => {
     fetchData()
@@ -85,12 +137,17 @@ export default function AdminPage() {
     fetchData()
   }
 
+  // === UPDATED: generateRandomQuestion with FULL STREAMING + LIVE DEBUG CONSOLE ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
-
+    setDebugOpen(true)
+    setDebugLogs([])
     // Pick random prompt
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
+    
+    addLog("🚀 Starting AI generation (streaming)...", "info")
+    addLog(`Prompt: ${randomPrompt}`, "info")
 
     try {
       const res = await fetch("/api/admin/generate-question", {
@@ -99,13 +156,40 @@ export default function AdminPage() {
         body: JSON.stringify({ prompt: randomPrompt }),
       })
 
-      const data = await res.json()
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || "Generation failed")
+      }
 
-      if (!res.ok) throw new Error(data.error || "Generation failed")
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error("No stream reader available")
 
-      setGeneratedQuestion(data)
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        buffer += chunk
+
+        // Show EVERY token live in the debug console (exactly what you asked for)
+        addLog(chunk, "info")
+      }
+
+      // Extract the final JSON object from the entire stream buffer
+      const jsonMatch = buffer.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        setGeneratedQuestion(parsed)
+        addLog("✅ Successfully parsed valid question JSON!", "success")
+      } else {
+        throw new Error("Could not find valid JSON in AI response")
+      }
     } catch (err: any) {
-      alert("AI Generation failed: " + err.message)
+      addLog(`❌ ${err.message}`, "error")
+      alert("AI Generation failed — check the LIVE AI CONSOLE popup for full details")
     } finally {
       setGenerating(false)
     }
@@ -113,18 +197,17 @@ export default function AdminPage() {
 
   const saveGeneratedQuestion = async () => {
     if (!generatedQuestion) return
-
     try {
       const res = await fetch("/api/admin/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(generatedQuestion),
       })
-
       if (res.ok) {
         alert("✅ Question saved to database!")
         setAiModalOpen(false)
         setGeneratedQuestion(null)
+        setDebugOpen(false) // close console after successful save
       } else {
         alert("Failed to save question")
       }
@@ -165,7 +248,6 @@ export default function AdminPage() {
           <Badge variant="outline">Admin Dashboard</Badge>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         {/* Tabs */}
         <div className="flex border-b mb-6">
@@ -188,7 +270,6 @@ export default function AdminPage() {
             Tests
           </button>
         </div>
-
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -238,7 +319,6 @@ export default function AdminPage() {
             </Card>
           </div>
         )}
-
         {/* USERS TAB */}
         {activeTab === "users" && (
           <Card>
@@ -293,7 +373,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
-
         {/* TESTS TAB */}
         {activeTab === "tests" && (
           <Card>
@@ -334,7 +413,6 @@ export default function AdminPage() {
           </Card>
         )}
       </main>
-
       {/* Floating AI Button */}
       <button
         onClick={() => setAiModalOpen(true)}
@@ -344,7 +422,6 @@ export default function AdminPage() {
         <Wand2 className="w-5 h-5" />
         <span className="font-medium">Generate Random Question</span>
       </button>
-
       {/* AI Modal - Automatic */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
@@ -358,9 +435,8 @@ export default function AdminPage() {
                 <Sparkles className="w-6 h-6 text-purple-500" />
                 <h2 className="text-2xl font-bold">AI Question Generator</h2>
               </div>
-              <button onClick={() => setAiModalOpen(false)} className="text-2xl leading-none">×</button>
+              <button onClick={() => { setAiModalOpen(false); setDebugOpen(false) }} className="text-2xl leading-none">×</button>
             </div>
-
             <div className="p-6 space-y-6">
               <Button
                 onClick={generateRandomQuestion}
@@ -379,7 +455,6 @@ export default function AdminPage() {
                   </>
                 )}
               </Button>
-
               {generatedQuestion && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
                   <h3 className="font-semibold mb-3">Generated Question</h3>
@@ -404,6 +479,13 @@ export default function AdminPage() {
           </motion.div>
         </div>
       )}
+
+      {/* === LIVE DEBUG CONSOLE POPUP (appears automatically during generation) === */}
+      <DebugConsole 
+        isOpen={debugOpen} 
+        logs={debugLogs} 
+        onClose={() => setDebugOpen(false)} 
+      />
     </div>
   )
 }
