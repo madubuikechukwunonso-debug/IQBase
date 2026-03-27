@@ -129,7 +129,6 @@ export default function AdminPage() {
     const usersData = await usersRes.json()
     const testsData = await testsRes.json()
     const questionsData = await questionsRes.json()
-
     setStats(statsData.stats || {})
     setUsers(usersData.users || [])
     setTests(testsData.tests || [])
@@ -158,7 +157,7 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === GROQ - Text / Normal Questions (now with difficulty) ===
+  // === GROQ - Text / Normal Questions (with difficulty selector) ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
@@ -172,7 +171,7 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          prompt: randomPrompt, 
+          prompt: randomPrompt,
           difficulty: selectedDifficulty 
         }),
       })
@@ -275,8 +274,11 @@ export default function AdminPage() {
     setAiModalOpen(false)
     setGeneratedQuestion(null)
     setDebugOpen(false)
-    if (lastType === "text") generateRandomQuestion()
-    else if (lastType === "visual") generateVisualQuestion()
+    if (lastType === "text") {
+      generateRandomQuestion()
+    } else if (lastType === "visual") {
+      generateVisualQuestion()
+    }
   }
 
   const saveGeneratedQuestion = async () => {
@@ -335,7 +337,6 @@ export default function AdminPage() {
           <Badge variant="outline">Admin Dashboard</Badge>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         {/* Tabs */}
         <div className="flex border-b mb-6">
@@ -365,9 +366,205 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* OVERVIEW, USERS, TESTS, QUESTIONS tabs remain exactly as you had them */}
-        {/* ... (your existing tab content unchanged) ... */}
+        {/* OVERVIEW TAB */}
+        {activeTab === "overview" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Users</p>
+                    <p className="text-3xl font-bold">{stats.totalUsers || 0}</p>
+                  </div>
+                  <Users className="w-8 h-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Tests</p>
+                    <p className="text-3xl font-bold">{stats.totalTests || 0}</p>
+                  </div>
+                  <BarChart3 className="w-8 h-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Premium Users</p>
+                    <p className="text-3xl font-bold">{stats.premiumUsers || 0}</p>
+                  </div>
+                  <DollarSign className="w-8 h-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Basic Users</p>
+                    <p className="text-3xl font-bold">{stats.basicUsers || 0}</p>
+                  </div>
+                  <Users className="w-8 h-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
+        {/* USERS TAB */}
+        {activeTab === "users" && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between">
+                <CardTitle>Users ({filteredUsers.length})</CardTitle>
+                <div className="relative w-72">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4">Email</th>
+                    <th className="text-left py-3 px-4">Role</th>
+                    <th className="text-left py-3 px-4">Status</th>
+                    <th className="text-left py-3 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user.id} className="border-b last:border-0">
+                      <td className="py-3 px-4">{user.email}</td>
+                      <td className="py-3 px-4">
+                        <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        {user.blocked ? <Badge variant="destructive">Blocked</Badge> : <Badge variant="outline">Active</Badge>}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button
+                          size="sm"
+                          variant={user.blocked ? "default" : "destructive"}
+                          onClick={() => blockUser(user.id, !user.blocked)}
+                        >
+                          <ShieldX className="w-3 h-3 mr-1" />
+                          {user.blocked ? "Unblock" : "Block"}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* TESTS TAB */}
+        {activeTab === "tests" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Tests ({filteredTests.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4">Email</th>
+                    <th className="text-left py-3 px-4">Score</th>
+                    <th className="text-left py-3 px-4">Date</th>
+                    <th className="text-left py-3 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTests.map((test) => (
+                    <tr key={test.id} className="border-b last:border-0">
+                      <td className="py-3 px-4">{test.user?.email}</td>
+                      <td className="py-3 px-4 font-semibold">{test.score}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{new Date(test.createdAt).toLocaleDateString()}</td>
+                      <td className="py-3 px-4">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteTest(test.id)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* QUESTIONS TAB */}
+        {activeTab === "questions" && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between">
+                <CardTitle>Questions ({filteredQuestions.length})</CardTitle>
+                <div className="relative w-72">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search question..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4">Question</th>
+                    <th className="text-left py-3 px-4">Type</th>
+                    <th className="text-left py-3 px-4">Difficulty</th>
+                    <th className="text-left py-3 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredQuestions.map((q) => (
+                    <tr key={q.id} className="border-b last:border-0">
+                      <td className="py-3 px-4 text-sm">{q.question.substring(0, 80)}...</td>
+                      <td className="py-3 px-4">
+                        <Badge variant="secondary">{q.type}</Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant={q.difficulty >= 4 ? "destructive" : "outline"}>{q.difficulty}</Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteQuestion(q.id)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       {/* Floating AI Button */}
@@ -380,7 +577,7 @@ export default function AdminPage() {
         <span className="font-medium">Generate Random Question</span>
       </button>
 
-      {/* AI Modal with Difficulty Selector + Scrollable Content */}
+      {/* AI Modal with Difficulty Selector + Scrollable Content + Fixed Buttons */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -388,6 +585,7 @@ export default function AdminPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-background rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
           >
+            {/* Header */}
             <div className="p-6 border-b flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Sparkles className="w-6 h-6 text-purple-500" />
@@ -396,10 +594,11 @@ export default function AdminPage() {
               <button onClick={() => { setAiModalOpen(false); setDebugOpen(false) }} className="text-2xl leading-none">×</button>
             </div>
 
+            {/* Scrollable Content */}
             <div className="flex-1 overflow-auto p-6 space-y-6">
-              {/* Difficulty selector - only for Groq */}
+              {/* Difficulty selector for Groq */}
               <div className="flex items-center gap-3">
-                <span className="font-medium text-sm">Difficulty (Groq only):</span>
+                <span className="font-medium text-sm">Difficulty Level (Groq only):</span>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((level) => (
                     <button
@@ -417,6 +616,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* Generate Buttons */}
               <div className="grid grid-cols-2 gap-4">
                 <Button
                   onClick={generateRandomQuestion}
@@ -436,11 +636,12 @@ export default function AdminPage() {
                 </Button>
               </div>
 
-              {/* Preview with image support */}
+              {/* Preview */}
               {generatedQuestion && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
                   <h3 className="font-semibold mb-3">Generated Question</h3>
 
+                  {/* Real Image Preview */}
                   {generatedQuestion.imageUrl && (
                     <div className="mb-6 border rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
                       <img
@@ -468,8 +669,8 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Buttons always at bottom */}
-            <div className="p-6 border-t flex gap-3">
+            {/* Fixed Footer Buttons */}
+            <div className="p-6 border-t flex gap-3 bg-background">
               <Button onClick={saveGeneratedQuestion} className="flex-1" disabled={!generatedQuestion}>
                 Save to Question Bank
               </Button>
