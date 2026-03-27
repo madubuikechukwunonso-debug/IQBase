@@ -46,7 +46,7 @@ const DebugConsole = ({ isOpen, logs, onClose }: {
       </div>
       <div className="flex-1 p-4 font-mono text-xs overflow-auto bg-black text-zinc-100 space-y-1">
         {logs.length === 0 ? (
-          <div className="text-zinc-500 italic">Waiting for AI response... (streaming tokens will appear here live)</div>
+          <div className="text-zinc-500 italic">Waiting for Groq response... (streaming tokens will appear here live)</div>
         ) : (
           logs.map((log) => (
             <div
@@ -66,7 +66,7 @@ const DebugConsole = ({ isOpen, logs, onClose }: {
         )}
       </div>
       <div className="p-3 text-[10px] text-zinc-500 border-t bg-zinc-900 text-center font-mono">
-        LIVE AI STREAM • gpt-4o-mini tokens
+        GROQ LIVE STREAM • llama-3.3-70b
       </div>
     </div>
   )
@@ -94,7 +94,6 @@ export default function AdminPage() {
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
   ]
-
   // === NEW: Debug console states ===
   const [debugOpen, setDebugOpen] = useState(false)
   const [debugLogs, setDebugLogs] = useState<{ id: number; text: string; type: "info" | "error" | "success" }[]>([])
@@ -137,7 +136,7 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === UPDATED: generateRandomQuestion with FULL STREAMING + LIVE DEBUG CONSOLE ===
+  // === FIXED: generateRandomQuestion with Groq stream parsing ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
@@ -145,8 +144,8 @@ export default function AdminPage() {
     setDebugLogs([])
     // Pick random prompt
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
-    
-    addLog("🚀 Starting AI generation (streaming)...", "info")
+
+    addLog("🚀 Starting Groq generation (streaming)...", "info")
     addLog(`Prompt: ${randomPrompt}`, "info")
 
     try {
@@ -165,7 +164,8 @@ export default function AdminPage() {
       if (!reader) throw new Error("No stream reader available")
 
       const decoder = new TextDecoder()
-      let buffer = ""
+      let buffer = ""          // raw buffer for debug console
+      let cleanJsonText = ""   // cleaned text ONLY for JSON parsing
 
       while (true) {
         const { done, value } = await reader.read()
@@ -174,18 +174,27 @@ export default function AdminPage() {
         const chunk = decoder.decode(value, { stream: true })
         buffer += chunk
 
-        // Show EVERY token live in the debug console (exactly what you asked for)
+        // Show EVERY raw token live in the debug console (exactly what you asked for)
         addLog(chunk, "info")
+
+        // === CLEAN Groq stream (only take content from "0:" data lines) ===
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('0:')) {
+            const content = line.slice(2).trim()
+            cleanJsonText += content
+          }
+        }
       }
 
-      // Extract the final JSON object from the entire stream buffer
-      const jsonMatch = buffer.match(/\{[\s\S]*\}/)
+      // Extract the first complete JSON object from the cleaned text
+      const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
         setGeneratedQuestion(parsed)
         addLog("✅ Successfully parsed valid question JSON!", "success")
       } else {
-        throw new Error("Could not find valid JSON in AI response")
+        throw new Error("Could not find valid JSON in Groq response")
       }
     } catch (err: any) {
       addLog(`❌ ${err.message}`, "error")
@@ -479,12 +488,11 @@ export default function AdminPage() {
           </motion.div>
         </div>
       )}
-
       {/* === LIVE DEBUG CONSOLE POPUP (appears automatically during generation) === */}
-      <DebugConsole 
-        isOpen={debugOpen} 
-        logs={debugLogs} 
-        onClose={() => setDebugOpen(false)} 
+      <DebugConsole
+        isOpen={debugOpen}
+        logs={debugLogs}
+        onClose={() => setDebugOpen(false)}
       />
     </div>
   )
