@@ -12,19 +12,45 @@ export async function POST(req: Request) {
 
   const { prompt } = await req.json()
 
-  // Random theme to force originality and prevent repeats
+  // === 90+ PURE IQ-TEST FOCUSED THEMES (no broad academic subjects) ===
   const themes = [
-    "science", "history", "culture", 
-    "nature and ecosystems", "food", "aquatic life", 
-    "technology", "biology", "historical artifacts", 
-    "government"
+    "logical syllogisms", "conditional reasoning", "pattern recognition in shapes",
+    "number series completion", "letter series completion", "verbal analogies",
+    "spatial visualization", "matrix completion puzzles", "figure rotation and transformation",
+    "mirror image problems", "water image problems", "paper folding and cutting",
+    "cube and dice problems", "odd one out in figures", "embedded figure detection",
+    "figure completion", "direction sense test", "blood relation puzzles",
+    "coding decoding", "alphabet test", "mathematical operations",
+    "clock and calendar problems", "calendar reasoning", "time and distance puzzles",
+    "age calculation", "profit and loss reasoning", "ratio and proportion logic",
+    "percentage calculation puzzles", "simple interest logic", "compound interest reasoning",
+    "data sufficiency", "statement and assumption", "statement and conclusion",
+    "cause and effect reasoning", "course of action", "input output machine",
+    "puzzle seating arrangement", "floor based puzzles", "circular seating arrangement",
+    "linear seating arrangement", "box and stack puzzles", "month and day puzzles",
+    "year and date puzzles", "family tree logic", "relationship puzzles",
+    "symbol based reasoning", "mathematical reasoning", "logical Venn diagrams",
+    "syllogism with Venn", "analytical reasoning", "critical reasoning",
+    "abstract reasoning", "non verbal series", "non verbal classification",
+    "non verbal analogy", "figure series completion", "figure odd one out",
+    "figure matrix", "figure classification", "figure analogy",
+    "spatial orientation", "visual memory puzzles", "pattern folding",
+    "pattern unfolding", "dot situation", "hidden image detection",
+    "mirror reflection series", "water reflection series", "paper cutting patterns",
+    "cube face counting", "dice opposite faces", "dice number patterns",
+    "clock angle problems", "calendar date problems", "missing number in grid",
+    "missing letter in grid", "number matrix", "letter matrix",
+    "symbol matrix", "word analogy", "number analogy",
+    "letter analogy", "mixed series", "alpha numeric series",
+    "continuous pattern series", "reversed pattern series", "alternating pattern series"
   ]
+
   const randomTheme = themes[Math.floor(Math.random() * themes.length)]
 
   const systemPrompt = `You are an expert IQ test question creator for IQBase.
 Generate **exactly one** completely ORIGINAL and UNIQUE high-quality IQ question.
 Never repeat common patterns or questions you have made before.
-Use the theme "${randomTheme}" to make it fresh and different every time.
+Use the IQ-specific theme "${randomTheme}" to make it fresh and different every time.
 Output ONLY valid JSON. No extra text, no markdown.
 
 Required structure:
@@ -43,7 +69,7 @@ Required structure:
       model: groq("llama-3.3-70b-versatile"),
       system: systemPrompt,
       prompt: prompt,
-      temperature: 0.85,   // higher = more originality and variety
+      temperature: 0.85,
     })
 
     return result.toDataStreamResponse({
