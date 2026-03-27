@@ -1,10 +1,12 @@
+"use client"
+
 // src/app/verify/page.tsx
 import { Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Brain } from "lucide-react"
 
-// Client component (contains the hooks)
+// Inner client component that uses the hooks
 function VerifyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -53,7 +55,7 @@ function VerifyContent() {
   )
 }
 
-// Server component with Suspense boundary
+// Server wrapper with Suspense boundary
 export default function VerifyPage() {
   return (
     <Suspense fallback={
