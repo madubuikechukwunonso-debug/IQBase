@@ -66,13 +66,13 @@ Required structure:
 
   try {
     const { text } = await generateText({
-      model: groq("llama-3.3-405b"),        // ← Upgraded to Llama 3.3 405B
+      model: groq("llama-3.3-405b"),        // ← Upgraded to the more intelligent 405B model
       system: systemPrompt,
       prompt: prompt,
       temperature: 0.85,
     });
 
-    // Extract JSON
+    // Extract JSON from Groq response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found in response");
 
