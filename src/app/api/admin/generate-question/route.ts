@@ -12,67 +12,34 @@ export async function POST(req: Request) {
 
   const { prompt } = await req.json();
 
-  const themes = [
-    "logical syllogisms", "conditional reasoning", "pattern recognition in shapes",
-    "number series completion", "letter series completion", "verbal analogies",
-    "spatial visualization", "matrix completion puzzles", "figure rotation and transformation",
-    "mirror image problems", "water image problems", "paper folding and cutting",
-    "cube and dice problems", "odd one out in figures", "embedded figure detection",
-    "figure completion", "direction sense test", "blood relation puzzles",
-    "coding decoding", "alphabet test", "mathematical operations",
-    "clock and calendar problems", "calendar reasoning", "time and distance puzzles",
-    "age calculation", "profit and loss reasoning", "ratio and proportion logic",
-    "percentage calculation puzzles", "simple interest logic", "compound interest reasoning",
-    "data sufficiency", "statement and assumption", "statement and conclusion",
-    "cause and effect reasoning", "course of action", "input output machine",
-    "puzzle seating arrangement", "floor based puzzles", "circular seating arrangement",
-    "linear seating arrangement", "box and stack puzzles", "month and day puzzles",
-    "year and date puzzles", "family tree logic", "relationship puzzles",
-    "symbol based reasoning", "mathematical reasoning", "logical Venn diagrams",
-    "syllogism with Venn", "analytical reasoning", "critical reasoning",
-    "abstract reasoning", "non verbal series", "non verbal classification",
-    "non verbal analogy", "figure series completion", "figure odd one out",
-    "figure matrix", "figure classification", "figure analogy",
-    "spatial orientation", "visual memory puzzles", "pattern folding",
-    "pattern unfolding", "dot situation", "hidden image detection",
-    "mirror reflection series", "water reflection series", "paper cutting patterns",
-    "cube face counting", "dice opposite faces", "dice number patterns",
-    "clock angle problems", "calendar date problems", "missing number in grid",
-    "missing letter in grid", "number matrix", "letter matrix",
-    "symbol matrix", "word analogy", "number analogy",
-    "letter analogy", "mixed series", "alpha numeric series",
-    "continuous pattern series", "reversed pattern series", "alternating pattern series"
-  ];
+  const systemPrompt = `You are a world-class IQ test designer who creates advanced, thought-provoking, and visually engaging questions.
 
-  const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+Generate **exactly one** completely ORIGINAL, high-quality IQ question.
 
-  const systemPrompt = `You are an expert IQ test question creator for IQBase.
-Generate **exactly one** completely ORIGINAL and UNIQUE high-quality IQ question.
-Use the IQ-specific theme "${randomTheme}".
+Make it interesting and real-world oriented. Use themes like history, culture, religion, science, nature, architecture, famous figures, symbols, art, philosophy, or daily life scenarios — not just abstract geometric patterns.
 
-Output ONLY valid JSON. No extra text, no markdown, no explanations.
+Output ONLY valid JSON. No extra text.
 
 Required structure:
 {
-  "type": "logical" | "pattern" | "numerical" | "verbal",
+  "type": "logical" | "pattern" | "numerical" | "verbal" | "visual" | "cultural",
   "difficulty": number (1-5),
   "question": string,
   "options": [string, string, string, string],
   "correctAnswer": number (0-3),
   "explanation": string,
   "timeLimit": number (30-90),
-  "visualDescription": "A highly detailed, vivid description of the visual that should accompany this question. Focus on geometric patterns, matrices, shapes, symmetry, colors, 3D objects, or diagrams that would help illustrate the question. Be specific about layout, colors, and style so it can be used directly as a prompt for image generation."
+  "visualDescription": "A rich, highly detailed, vivid description of the image that should accompany this question. Make it visually striking and relevant. Describe colors, clothing, setting, lighting, mood, and composition in detail so it produces a beautiful and meaningful image."
 }`;
 
   try {
     const { text } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),   // ← Correct model available on Groq
+      model: groq("llama-3.3-70b-versatile"),
       system: systemPrompt,
       prompt: prompt,
-      temperature: 0.85,
+      temperature: 0.9,
     });
 
-    // Extract JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found in response");
 
