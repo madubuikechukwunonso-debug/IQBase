@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -36,27 +37,22 @@ export default function LoginClient() {
     });
 
     if (result?.error) {
-      if (result.error === "CredentialsSignin") {
-        setError("Invalid email or password");
-      } else {
-        setError(result.error || "An error occurred during login");
-      }
+      setError(
+        result.error === "CredentialsSignin"
+          ? "Invalid email or password"
+          : "Login failed. Please try again."
+      );
       setLoading(false);
       return;
     }
 
-    // Role-based redirect after successful login
+    // ✅ SUCCESS - Role-based redirect with forced session refresh
     if (result?.ok) {
-      // Fetch the latest session to get the role
-      const res = await fetch("/api/auth/session");
-      const session = await res.json();
-
-      if (session?.user?.role === "ADMIN") {
-        router.push("/admin");
-      } else {
+      // Small delay + refresh to ensure session cookie is set
+      setTimeout(() => {
+        router.refresh(); // Force NextAuth to load the latest session
         router.push(callbackUrl);
-      }
-      router.refresh();
+      }, 100);
     }
 
     setLoading(false);
@@ -65,10 +61,7 @@ export default function LoginClient() {
   const handleSocialSignIn = (provider: string) => {
     setLoading(true);
     setError(null);
-    signIn(provider, { callbackUrl, redirect: false }).catch((err) => {
-      setError(`Failed to sign in with ${provider}`);
-      setLoading(false);
-    });
+    signIn(provider, { callbackUrl, redirect: true });
   };
 
   return (
@@ -198,7 +191,6 @@ export default function LoginClient() {
 
       {/* Social sign-in buttons */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Google */}
         <button
           type="button"
           onClick={() => handleSocialSignIn("google")}
@@ -218,7 +210,6 @@ export default function LoginClient() {
           </span>
         </button>
 
-        {/* Facebook */}
         <button
           type="button"
           onClick={() => handleSocialSignIn("facebook")}
@@ -235,7 +226,6 @@ export default function LoginClient() {
           </span>
         </button>
 
-        {/* X (Twitter) */}
         <button
           type="button"
           onClick={() => handleSocialSignIn("twitter")}
