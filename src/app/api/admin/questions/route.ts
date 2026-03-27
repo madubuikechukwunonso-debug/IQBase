@@ -1,7 +1,7 @@
 // src/app/api/admin/questions/route.ts
 import { NextResponse } from "next/server"
 import { getUser } from "@/lib/session"
-import { prisma } from "@/lib/prisma"   // your existing Prisma client
+import prisma from "@/lib/prisma"   // your existing Prisma client
 
 export async function POST(req: Request) {
   const user = await getUser()
