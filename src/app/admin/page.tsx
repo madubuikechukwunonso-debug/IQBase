@@ -151,64 +151,41 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === GROQ - Text / Normal Questions (with difficulty selector) ===
-  const generateRandomQuestion = async () => {
-    setGenerating(true)
-    setGeneratedQuestion(null)
-    setDebugOpen(true)
-    setDebugLogs([])
-    const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
-    addLog("🚀 Starting GROQ (text) generation...", "info")
-    addLog(`Prompt: ${randomPrompt} | Difficulty: ${selectedDifficulty}`, "info")
-    try {
-      const res = await fetch("/api/admin/generate-question", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: randomPrompt,
-          difficulty: selectedDifficulty
-        }),
-      })
-      if (!res.ok) throw new Error("Generation failed")
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error("No stream reader")
-      const decoder = new TextDecoder()
-      let buffer = ""
-      let cleanJsonText = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk
-        addLog(chunk, "info")
-        const lines = chunk.split("\n")
-        for (const line of lines) {
-          if (line.startsWith("0:")) {
-            try {
-              const content = JSON.parse(line.slice(2))
-              cleanJsonText += content
-            } catch {
-              cleanJsonText += line.slice(2)
-            }
-          }
-        }
-      }
-      const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
-        setGeneratedQuestion(parsed)
-        setLastType("text")
-        addLog("✅ Groq text question parsed!", "success")
-      } else {
-        throw new Error("Could not find valid JSON")
-      }
-    } catch (err: any) {
-      addLog(`❌ ${err.message}`, "error")
-    } finally {
-      setGenerating(false)
-    }
-  }
+  // === GROQ - Text / Normal Questions (updated for plain JSON response) ===
+const generateRandomQuestion = async () => {
+  setGenerating(true);
+  setGeneratedQuestion(null);
+  setDebugOpen(true);
+  setDebugLogs([]);
 
+  const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)];
+  addLog("🚀 Starting GROQ (text) generation...", "info");
+  addLog(`Prompt: ${randomPrompt} | Difficulty: ${selectedDifficulty}`, "info");
+
+  try {
+    const res = await fetch("/api/admin/generate-question", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: randomPrompt,
+        difficulty: selectedDifficulty
+      }),
+    });
+
+    if (!res.ok) throw new Error("Generation failed");
+
+    const parsed = await res.json();        // ← Simple JSON parse (no streaming)
+
+    setGeneratedQuestion(parsed);
+    setLastType("text");
+    addLog("✅ Groq text question parsed!", "success");
+  } catch (err: any) {
+    addLog(`❌ ${err.message}`, "error");
+    console.error(err);
+  } finally {
+    setGenerating(false);
+  }
+};
   // === REPLICATE - Visual / Image Questions (SIMPLE JSON + FULL ERROR LOGGING) ===
 const generateVisualQuestion = async () => {
   setGenerating(true)
