@@ -613,7 +613,7 @@ export default function AdminPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
                   <h3 className="font-semibold mb-3">Generated Question</h3>
 
-                  {/* REAL IMAGE PREVIEW (only shows when imageUrl exists) */}
+                  {/* REAL IMAGE PREVIEW - this is the updated part you asked for */}
                   {generatedQuestion.imageUrl && (
                     <div className="mb-6 border rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
                       <img
