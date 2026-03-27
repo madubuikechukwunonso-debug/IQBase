@@ -337,6 +337,7 @@ export default function AdminPage() {
           <Badge variant="outline">Admin Dashboard</Badge>
         </div>
       </header>
+
       <main className="container mx-auto px-4 py-8">
         {/* Tabs */}
         <div className="flex border-b mb-6">
@@ -594,11 +595,11 @@ export default function AdminPage() {
               <button onClick={() => { setAiModalOpen(false); setDebugOpen(false) }} className="text-2xl leading-none">×</button>
             </div>
 
-            {/* Scrollable Content */}
+            {/* Scrollable Content Area */}
             <div className="flex-1 overflow-auto p-6 space-y-6">
               {/* Difficulty selector for Groq */}
               <div className="flex items-center gap-3">
-                <span className="font-medium text-sm">Difficulty Level (Groq only):</span>
+                <span className="font-medium text-sm">Difficulty (Groq only):</span>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((level) => (
                     <button
@@ -616,7 +617,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Generate Buttons */}
               <div className="grid grid-cols-2 gap-4">
                 <Button
                   onClick={generateRandomQuestion}
