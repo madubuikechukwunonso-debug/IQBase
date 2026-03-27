@@ -1,7 +1,8 @@
 // src/app/api/admin/generate-visual/route.ts
-// ✅ FIXED: Final working version for AI SDK v4 + Replicate
+// ✅ CLEAN & FINAL VERSION FOR AI SDK v6 + @ai-sdk/replicate v2
+// (No experimental_, no "as any", no type conflicts)
 
-import { experimental_generateImage as generateImage } from 'ai';
+import { generateImage } from 'ai';
 import { replicate } from '@ai-sdk/replicate';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -16,15 +17,13 @@ export async function POST(req: NextRequest) {
     const model = replicate.image('black-forest-labs/flux-schnell');
 
     const { image } = await generateImage({
-      // Type cast required due to V1/V2 mismatch in your current AI SDK versions
-      model: model as any,
+      model,
       prompt: prompt.trim(),
-      // ✅ CHANGED: AI SDK v4 uses "n" (not "numOutputs")
       n: 1,
       size: '1024x1024',
     });
 
-    // Convert binary image → base64 data URL (perfect for <img> and PDF)
+    // Convert binary image → base64 data URL (perfect for <img> + PDF)
     const base64 = Buffer.from(image).toString('base64');
     const dataUrl = `data:image/png;base64,${base64}`;
 
@@ -32,6 +31,7 @@ export async function POST(req: NextRequest) {
       success: true,
       image: dataUrl,
     });
+
   } catch (error: any) {
     console.error('Admin visual generation error:', error);
     return NextResponse.json(
