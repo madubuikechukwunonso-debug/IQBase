@@ -1,14 +1,16 @@
+// src/app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { PrismaClient } from "@prisma/client"
 import Credentials from "next-auth/providers/credentials"
 import EmailProvider from "next-auth/providers/email"
 import nodemailer from "nodemailer"
-import bcrypt from "bcryptjs"
+import bcryptjs from "bcryptjs"
 
 const prisma = new PrismaClient()
 
-export const authOptions = {
+// ← authOptions is now internal (not exported) → fixes the type error
+const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
@@ -18,13 +20,15 @@ export const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
-        const user = await prisma.user.findUnique({ where: { email: credentials.email } })
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string }
+        })
         if (!user || !user.password || !user.emailVerified) return null
-        const isValid = await bcrypt.compare(credentials.password, user.password)
+        const isValid = await bcryptjs.compare(credentials.password as string, user.password)
         return isValid ? user : null
       }
     }),
-    // ✅ NEW: Magic link provider
+
     EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST,
@@ -35,7 +39,6 @@ export const authOptions = {
         },
       },
       from: process.env.EMAIL_FROM,
-      // Custom beautiful email templates
       sendVerificationRequest: async ({ identifier: email, url }) => {
         const transport = nodemailer.createTransport({
           host: process.env.EMAIL_SERVER_HOST,
@@ -76,7 +79,7 @@ export const authOptions = {
       return token
     },
     async session({ session, token }) {
-      if (session.user) session.user.role = token.role as string
+      if (session.user) (session.user as any).role = token.role
       return session
     },
   },
