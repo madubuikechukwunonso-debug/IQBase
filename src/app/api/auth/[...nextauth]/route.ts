@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials"
 import EmailProvider from "next-auth/providers/email"
 import nodemailer from "nodemailer"
 import bcryptjs from "bcryptjs"
+import type { JWT } from "next-auth/jwt"   // ← Added for TypeScript
 
 const prisma = new PrismaClient()
 
@@ -24,7 +25,6 @@ const authOptions = {
           where: { email: credentials.email as string }
         })
 
-        // ✅ FIXED: Use hashedPassword (the actual field in your Prisma schema)
         if (!user || !user.hashedPassword || !user.emailVerified) return null
 
         const isValid = await bcryptjs.compare(
@@ -56,7 +56,6 @@ const authOptions = {
           },
         })
 
-        const { host } = new URL(url)
         await transport.sendMail({
           to: email,
           from: process.env.EMAIL_FROM,
@@ -81,12 +80,17 @@ const authOptions = {
     error: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.role = user.role
+    // ✅ FIXED: Explicit types for jwt callback
+    async jwt({ token, user }: { token: JWT; user?: any }) {
+      if (user) {
+        token.role = user.role
+      }
       return token
     },
-    async session({ session, token }) {
-      if (session.user) (session.user as any).role = token.role
+    async session({ session, token }: { session: any; token: JWT }) {
+      if (session.user) {
+        (session.user as any).role = token.role
+      }
       return session
     },
   },
