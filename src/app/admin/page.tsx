@@ -209,80 +209,83 @@ export default function AdminPage() {
     }
   }
 
-  // === REPLICATE - Visual / Image Questions (NEW INTEGRATION) ===
-  const generateVisualQuestion = async () => {
-    setGenerating(true)
-    setGeneratedQuestion(null)
-    setDebugOpen(true)
-    setDebugLogs([])
-    const randomVisualPrompt = visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
-    addLog("🚀 Starting REPLICATE (Flux visual image) generation...", "info")
-    addLog(`Prompt: ${randomVisualPrompt}`, "info")
+  // === REPLICATE - Visual / Image Questions (SIMPLE JSON + FULL ERROR LOGGING) ===
+const generateVisualQuestion = async () => {
+  setGenerating(true)
+  setGeneratedQuestion(null)
+  setDebugOpen(true)
+  setDebugLogs([])
+  const randomVisualPrompt = visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
+  addLog("🚀 Starting REPLICATE (Flux visual image) generation...", "info")
+  addLog(`Prompt: ${randomVisualPrompt}`, "info")
 
-    try {
-      // 1. Generate the visual image using the new Replicate route
-      const imageRes = await fetch("/api/admin/generate-visual", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: randomVisualPrompt }),
-      })
-      if (!imageRes.ok) throw new Error("Image generation failed")
-      const imageData = await imageRes.json()
-      if (!imageData.success) throw new Error(imageData.error || "Image generation failed")
-      const imageUrl = imageData.image
-      addLog("✅ Replicate Flux image generated!", "success")
+  try {
+    const imageRes = await fetch("/api/admin/generate-visual", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: randomVisualPrompt }),
+    })
 
-      // 2. Generate matching text question using existing Groq route
-      addLog("🚀 Generating matching text question (Groq)...", "info")
-      const textRes = await fetch("/api/admin/generate-question", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: randomVisualPrompt,
-          difficulty: selectedDifficulty
-        }),
-      })
-      if (!textRes.ok) throw new Error("Text generation failed")
-      const reader = textRes.body?.getReader()
-      if (!reader) throw new Error("No stream reader")
-      const decoder = new TextDecoder()
-      let buffer = ""
-      let cleanJsonText = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk
-        addLog(chunk, "info")
-        const lines = chunk.split("\n")
-        for (const line of lines) {
-          if (line.startsWith("0:")) {
-            try {
-              const content = JSON.parse(line.slice(2))
-              cleanJsonText += content
-            } catch {
-              cleanJsonText += line.slice(2)
-            }
+    const imageData = await imageRes.json()
+
+    if (!imageRes.ok || !imageData.success) {
+      const errorMsg = imageData.error || imageData.details || "Image generation failed"
+      throw new Error(errorMsg)
+    }
+
+    const imageUrl = imageData.image
+    addLog("✅ Replicate Flux image generated!", "success")
+
+    // Generate matching text question
+    addLog("🚀 Generating matching text question (Groq)...", "info")
+    const textRes = await fetch("/api/admin/generate-question", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: randomVisualPrompt,
+        difficulty: selectedDifficulty
+      }),
+    })
+
+    if (!textRes.ok) throw new Error("Text generation failed")
+
+    const reader = textRes.body?.getReader()
+    if (!reader) throw new Error("No stream reader")
+    const decoder = new TextDecoder()
+    let cleanJsonText = ""
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split("\n")
+      for (const line of lines) {
+        if (line.startsWith("0:")) {
+          try {
+            const content = JSON.parse(line.slice(2))
+            cleanJsonText += content
+          } catch {
+            cleanJsonText += line.slice(2)
           }
         }
       }
-      const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
-        // Merge image into the question object so the preview works perfectly
-        const fullQuestion = { ...parsed, imageUrl }
-        setGeneratedQuestion(fullQuestion)
-        setLastType("visual")
-        addLog("✅ Full visual question + image ready!", "success")
-      } else {
-        throw new Error("Could not parse text question")
-      }
-    } catch (err: any) {
-      addLog(`❌ ${err.message}`, "error")
-    } finally {
-      setGenerating(false)
     }
+    const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+      const fullQuestion = { ...parsed, imageUrl }
+      setGeneratedQuestion(fullQuestion)
+      setLastType("visual")
+      addLog("✅ Full visual question + image ready!", "success")
+    } else {
+      throw new Error("Could not parse text question")
+    }
+  } catch (err: any) {
+    addLog(`❌ ${err.message}`, "error")
+    console.error("Full error from server:", err)
+  } finally {
+    setGenerating(false)
   }
+}
 
   const handleCancel = () => {
     setAiModalOpen(false)
