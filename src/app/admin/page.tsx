@@ -7,10 +7,7 @@ import {
   TrendingUp,
   DollarSign,
   BarChart3,
-  Filter,
-  Download,
   Search,
-  Plus,
   Sparkles,
   Wand2,
   X,
@@ -18,7 +15,8 @@ import {
   CheckCircle,
   ShieldX,
   Trash2,
-  Terminal
+  Terminal,
+  Image as ImageIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,7 +44,7 @@ const DebugConsole = ({ isOpen, logs, onClose }: {
       </div>
       <div className="flex-1 p-4 font-mono text-xs overflow-auto bg-black text-zinc-100 space-y-1">
         {logs.length === 0 ? (
-          <div className="text-zinc-500 italic">Waiting for Groq response... (streaming tokens will appear here live)</div>
+          <div className="text-zinc-500 italic">Waiting for AI response...</div>
         ) : (
           logs.map((log) => (
             <div
@@ -66,7 +64,7 @@ const DebugConsole = ({ isOpen, logs, onClose }: {
         )}
       </div>
       <div className="p-3 text-[10px] text-zinc-500 border-t bg-zinc-900 text-center font-mono">
-        GROQ LIVE STREAM • llama-3.3-70b
+        LIVE AI STREAM
       </div>
     </div>
   )
@@ -77,6 +75,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<any>(null)
   const [users, setUsers] = useState<any[]>([])
   const [tests, setTests] = useState<any[]>([])
+  const [questions, setQuestions] = useState<any[]>([]) // NEW: questions list
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
 
@@ -84,6 +83,7 @@ export default function AdminPage() {
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
+  const [lastType, setLastType] = useState<"text" | "visual" | null>(null) // tracks last generation type for auto-refresh on cancel
 
   // Hardcoded prompts
   const hardcodedPrompts = [
@@ -92,9 +92,15 @@ export default function AdminPage() {
     "Create a numerical reasoning question involving percentages, ratios or sequences.",
     "Create a processing speed question that tests quick decision making.",
     "Create a logical puzzle question with multiple steps and clear options.",
-    "Create a visual pattern or matrix question suitable for IQ tests.",
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
+  ]
+
+  const visualPrompts = [
+    "Create a visual pattern or matrix IQ question that requires observing shapes, colors or symbols.",
+    "Create a spatial reasoning question with rotating figures or 3D cubes.",
+    "Create a mirror-image or symmetry IQ question.",
+    "Create a visual analogy or figure completion question.",
   ]
 
   // Debug console
@@ -110,17 +116,21 @@ export default function AdminPage() {
   }, [])
 
   const fetchData = async () => {
-    const [statsRes, usersRes, testsRes] = await Promise.all([
+    const [statsRes, usersRes, testsRes, questionsRes] = await Promise.all([
       fetch("/api/admin/stats"),
       fetch("/api/admin/users"),
-      fetch("/api/admin/tests")
+      fetch("/api/admin/tests"),
+      fetch("/api/admin/questions")   // NEW: fetch questions
     ])
     const statsData = await statsRes.json()
     const usersData = await usersRes.json()
     const testsData = await testsRes.json()
+    const questionsData = await questionsRes.json()
+
     setStats(statsData.stats || {})
     setUsers(usersData.users || [])
     setTests(testsData.tests || [])
+    setQuestions(questionsData.questions || [])
     setLoading(false)
   }
 
@@ -139,16 +149,22 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === FIXED: Robust Groq / Vercel AI SDK stream parsing ===
+  // NEW: delete question from DB
+  const deleteQuestion = async (questionId: string) => {
+    if (!confirm("Delete this question permanently?")) return
+    await fetch(`/api/admin/questions/${questionId}`, { method: "DELETE" })
+    fetchData()
+  }
+
+  // === GROQ - Text / Normal Questions ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
     setDebugOpen(true)
     setDebugLogs([])
-
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
 
-    addLog("🚀 Starting Groq generation (streaming)...", "info")
+    addLog("🚀 Starting GROQ (text) generation...", "info")
     addLog(`Prompt: ${randomPrompt}`, "info")
 
     try {
@@ -157,59 +173,122 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: randomPrompt }),
       })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || "Generation failed")
-      }
+      if (!res.ok) throw new Error("Generation failed")
 
       const reader = res.body?.getReader()
-      if (!reader) throw new Error("No stream reader available")
-
+      if (!reader) throw new Error("No stream reader")
       const decoder = new TextDecoder()
-      let buffer = ""           // raw for debug
-      let cleanJsonText = ""    // cleaned text for JSON parsing
+      let buffer = ""
+      let cleanJsonText = ""
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         const chunk = decoder.decode(value, { stream: true })
         buffer += chunk
-
-        // Show every raw token live in console
         addLog(chunk, "info")
 
-        // === ROBUST CLEANING FOR AI SDK STREAM ===
         const lines = chunk.split("\n")
         for (const line of lines) {
           if (line.startsWith("0:")) {
             try {
-              // The part after "0:" is a JSON-encoded string
               const content = JSON.parse(line.slice(2))
               cleanJsonText += content
-            } catch (e) {
-              // fallback for malformed lines
+            } catch {
               cleanJsonText += line.slice(2)
             }
           }
         }
       }
 
-      // Extract the complete JSON object
       const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
         setGeneratedQuestion(parsed)
-        addLog("✅ Successfully parsed valid question JSON!", "success")
+        setLastType("text")   // remember type for cancel auto-refresh
+        addLog("✅ Groq text question parsed!", "success")
       } else {
-        throw new Error("Could not find valid JSON in Groq response")
+        throw new Error("Could not find valid JSON")
       }
     } catch (err: any) {
       addLog(`❌ ${err.message}`, "error")
-      alert("AI Generation failed — check the LIVE AI CONSOLE popup for full details")
     } finally {
       setGenerating(false)
+    }
+  }
+
+  // === GEMINI - Visual / Image Questions ===
+  const generateVisualQuestion = async () => {
+    setGenerating(true)
+    setGeneratedQuestion(null)
+    setDebugOpen(true)
+    setDebugLogs([])
+    const randomVisualPrompt = visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
+
+    addLog("🚀 Starting GEMINI (visual) generation...", "info")
+    addLog(`Prompt: ${randomVisualPrompt}`, "info")
+
+    try {
+      const res = await fetch("/api/admin/generate-visual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: randomVisualPrompt }),
+      })
+      if (!res.ok) throw new Error("Generation failed")
+
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error("No stream reader")
+      const decoder = new TextDecoder()
+      let buffer = ""
+      let cleanJsonText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        buffer += chunk
+        addLog(chunk, "info")
+
+        const lines = chunk.split("\n")
+        for (const line of lines) {
+          if (line.startsWith("0:")) {
+            try {
+              const content = JSON.parse(line.slice(2))
+              cleanJsonText += content
+            } catch {
+              cleanJsonText += line.slice(2)
+            }
+          }
+        }
+      }
+
+      const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        setGeneratedQuestion(parsed)
+        setLastType("visual")   // remember type for cancel auto-refresh
+        addLog("✅ Gemini visual question parsed!", "success")
+      } else {
+        throw new Error("Could not find valid JSON")
+      }
+    } catch (err: any) {
+      addLog(`❌ ${err.message}`, "error")
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // NEW: Cancel button logic – close modal + auto-generate new question of same type
+  const handleCancel = () => {
+    setAiModalOpen(false)
+    setGeneratedQuestion(null)
+    setDebugOpen(false)
+
+    // Auto spin up a new unique question of the same type
+    if (lastType === "text") {
+      generateRandomQuestion()
+    } else if (lastType === "visual") {
+      generateVisualQuestion()
     }
   }
 
@@ -226,6 +305,7 @@ export default function AdminPage() {
         setAiModalOpen(false)
         setGeneratedQuestion(null)
         setDebugOpen(false)
+        fetchData() // refresh questions list
       } else {
         alert("Failed to save question")
       }
@@ -237,9 +317,11 @@ export default function AdminPage() {
   const filteredUsers = users.filter(u =>
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
-
   const filteredTests = tests.filter(t =>
     t.user?.email.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+  const filteredQuestions = questions.filter(q =>
+    q.question.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   if (loading) {
@@ -266,6 +348,7 @@ export default function AdminPage() {
           <Badge variant="outline">Admin Dashboard</Badge>
         </div>
       </header>
+
       <main className="container mx-auto px-4 py-8">
         {/* Tabs */}
         <div className="flex border-b mb-6">
@@ -287,11 +370,19 @@ export default function AdminPage() {
           >
             Tests
           </button>
+          {/* NEW: Questions tab */}
+          <button
+            onClick={() => setActiveTab("questions")}
+            className={`px-6 py-3 font-medium ${activeTab === "questions" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+          >
+            Questions
+          </button>
         </div>
 
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {/* your existing overview cards unchanged */}
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -433,6 +524,61 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* NEW: QUESTIONS TAB */}
+        {activeTab === "questions" && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between">
+                <CardTitle>Questions ({filteredQuestions.length})</CardTitle>
+                <div className="relative w-72">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search question..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4">Question</th>
+                    <th className="text-left py-3 px-4">Type</th>
+                    <th className="text-left py-3 px-4">Difficulty</th>
+                    <th className="text-left py-3 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredQuestions.map((q) => (
+                    <tr key={q.id} className="border-b last:border-0">
+                      <td className="py-3 px-4 text-sm">{q.question.substring(0, 80)}...</td>
+                      <td className="py-3 px-4">
+                        <Badge variant="secondary">{q.type}</Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant={q.difficulty >= 4 ? "destructive" : "outline"}>{q.difficulty}</Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteQuestion(q.id)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       {/* Floating AI Button */}
@@ -445,7 +591,7 @@ export default function AdminPage() {
         <span className="font-medium">Generate Random Question</span>
       </button>
 
-      {/* AI Modal */}
+      {/* AI Modal – now with TWO buttons + CANCEL */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -461,23 +607,25 @@ export default function AdminPage() {
               <button onClick={() => { setAiModalOpen(false); setDebugOpen(false) }} className="text-2xl leading-none">×</button>
             </div>
             <div className="p-6 space-y-6">
-              <Button
-                onClick={generateRandomQuestion}
-                disabled={generating}
-                className="w-full py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-                    Generating random question...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="mr-3 h-5 w-5" />
-                    Generate Random Question
-                  </>
-                )}
-              </Button>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  onClick={generateRandomQuestion}
+                  disabled={generating}
+                  className="py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600 flex items-center gap-2"
+                >
+                  {generating ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                  Groq – Text Question
+                </Button>
+                <Button
+                  onClick={generateVisualQuestion}
+                  disabled={generating}
+                  className="py-7 text-lg bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center gap-2"
+                >
+                  {generating ? <Loader2 className="animate-spin" /> : <ImageIcon />}
+                  Gemini – Visual Question
+                </Button>
+              </div>
+
               {generatedQuestion && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
                   <h3 className="font-semibold mb-3">Generated Question</h3>
@@ -493,9 +641,16 @@ export default function AdminPage() {
                       </div>
                     ))}
                   </div>
-                  <Button onClick={saveGeneratedQuestion} className="w-full mt-6">
-                    Save to Question Bank
-                  </Button>
+
+                  {/* Save + Cancel buttons */}
+                  <div className="flex gap-3 mt-6">
+                    <Button onClick={saveGeneratedQuestion} className="flex-1">
+                      Save to Question Bank
+                    </Button>
+                    <Button onClick={handleCancel} variant="outline" className="flex-1">
+                      Cancel & Generate New
+                    </Button>
+                  </div>
                 </motion.div>
               )}
             </div>
