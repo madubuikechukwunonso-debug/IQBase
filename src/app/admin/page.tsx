@@ -578,7 +578,7 @@ export default function AdminPage() {
         <span className="font-medium">Generate Random Question</span>
       </button>
 
-      {/* AI Modal with Difficulty Selector + Scrollable Content + Fixed Buttons */}
+      {/* AI Modal – Difficulty Selector + Scrollable Content + Fixed Buttons */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -595,7 +595,7 @@ export default function AdminPage() {
               <button onClick={() => { setAiModalOpen(false); setDebugOpen(false) }} className="text-2xl leading-none">×</button>
             </div>
 
-            {/* Scrollable Content Area */}
+            {/* Scrollable Content */}
             <div className="flex-1 overflow-auto p-6 space-y-6">
               {/* Difficulty selector for Groq */}
               <div className="flex items-center gap-3">
