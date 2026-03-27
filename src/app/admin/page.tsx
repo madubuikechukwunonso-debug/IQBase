@@ -85,10 +85,8 @@ export default function AdminPage() {
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
   const [lastType, setLastType] = useState<"text" | "visual" | null>(null)
 
-  // Difficulty selector
   const [selectedDifficulty, setSelectedDifficulty] = useState(3)
 
-  // Hardcoded prompts
   const hardcodedPrompts = [
     "Create a challenging logical reasoning question about conditional statements and syllogisms.",
     "Create a pattern recognition question with numbers or shapes that requires deep observation.",
@@ -98,6 +96,7 @@ export default function AdminPage() {
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
   ]
+
   const visualPrompts = [
     "Create a visual pattern or matrix IQ question that requires observing shapes, colors or symbols.",
     "Create a spatial reasoning question with rotating figures or 3D cubes.",
@@ -105,7 +104,6 @@ export default function AdminPage() {
     "Create a visual analogy or figure completion question.",
   ]
 
-  // Debug console
   const [debugOpen, setDebugOpen] = useState(false)
   const [debugLogs, setDebugLogs] = useState<{ id: number; text: string; type: "info" | "error" | "success" }[]>([])
 
@@ -156,7 +154,7 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === GROQ - Text Question + Visual Description ===
+  // === GROQ FIRST → then image using visualDescription ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
@@ -164,7 +162,7 @@ export default function AdminPage() {
     setDebugLogs([])
 
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
-    addLog("🚀 Starting GROQ (text + visual description) generation...", "info")
+    addLog("🚀 Starting GROQ generation (question + visual description)...", "info")
     addLog(`Prompt: ${randomPrompt} | Difficulty: ${selectedDifficulty}`, "info")
 
     try {
@@ -177,11 +175,11 @@ export default function AdminPage() {
         }),
       })
 
-      if (!res.ok) throw new Error("Generation failed")
+      if (!res.ok) throw new Error("Question generation failed")
 
       const parsed = await res.json()
 
-      // Groq now returns visualDescription → use it for image
+      // Use visualDescription from Groq to generate image
       const imageRes = await fetch("/api/admin/generate-visual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -205,7 +203,7 @@ export default function AdminPage() {
     }
   }
 
-  // === REPLICATE / Hugging Face - Visual Question (uses Groq description) ===
+  // === Visual Question (now also uses Groq first) ===
   const generateVisualQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
@@ -213,27 +211,11 @@ export default function AdminPage() {
     setDebugLogs([])
 
     const randomVisualPrompt = visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
-    addLog("🚀 Starting REPLICATE (Flux visual image) generation...", "info")
+    addLog("🚀 Starting GROQ generation (question + visual description)...", "info")
     addLog(`Prompt: ${randomVisualPrompt}`, "info")
 
     try {
-      const imageRes = await fetch("/api/admin/generate-visual", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: randomVisualPrompt }),
-      })
-
-      const imageData = await imageRes.json()
-      if (!imageRes.ok || !imageData.success) {
-        throw new Error(imageData.error || "Image generation failed")
-      }
-
-      const imageUrl = imageData.image
-      addLog("✅ Hugging Face image generated!", "success")
-
-      // Generate matching text question from Groq
-      addLog("🚀 Generating matching text question (Groq)...", "info")
-      const textRes = await fetch("/api/admin/generate-question", {
+      const res = await fetch("/api/admin/generate-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -242,13 +224,25 @@ export default function AdminPage() {
         }),
       })
 
-      if (!textRes.ok) throw new Error("Text generation failed")
+      if (!res.ok) throw new Error("Question generation failed")
 
-      const parsed = await textRes.json()
-      const fullQuestion = { ...parsed, imageUrl }
+      const parsed = await res.json()
+
+      const imageRes = await fetch("/api/admin/generate-visual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: parsed.visualDescription || parsed.question }),
+      })
+
+      const imageData = await imageRes.json()
+      if (!imageRes.ok || !imageData.success) {
+        throw new Error(imageData.error || "Image generation failed")
+      }
+
+      const fullQuestion = { ...parsed, imageUrl: imageData.image }
       setGeneratedQuestion(fullQuestion)
       setLastType("visual")
-      addLog("✅ Full visual question + image ready!", "success")
+      addLog("✅ Groq question + Hugging Face image ready!", "success")
     } catch (err: any) {
       addLog(`❌ ${err.message}`, "error")
       console.error(err)
@@ -257,7 +251,6 @@ export default function AdminPage() {
     }
   }
 
-  // Improved handleCancel - keeps modal open
   const handleCancel = () => {
     setGeneratedQuestion(null)
     if (lastType === "text") {
@@ -325,35 +318,14 @@ export default function AdminPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Tabs */}
         <div className="flex border-b mb-6">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`px-6 py-3 font-medium ${activeTab === "overview" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`px-6 py-3 font-medium ${activeTab === "users" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
-          >
-            Users
-          </button>
-          <button
-            onClick={() => setActiveTab("tests")}
-            className={`px-6 py-3 font-medium ${activeTab === "tests" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
-          >
-            Tests
-          </button>
-          <button
-            onClick={() => setActiveTab("questions")}
-            className={`px-6 py-3 font-medium ${activeTab === "questions" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
-          >
-            Questions
-          </button>
+          <button onClick={() => setActiveTab("overview")} className={`px-6 py-3 font-medium ${activeTab === "overview" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Overview</button>
+          <button onClick={() => setActiveTab("users")} className={`px-6 py-3 font-medium ${activeTab === "users" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Users</button>
+          <button onClick={() => setActiveTab("tests")} className={`px-6 py-3 font-medium ${activeTab === "tests" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Tests</button>
+          <button onClick={() => setActiveTab("questions")} className={`px-6 py-3 font-medium ${activeTab === "questions" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Questions</button>
         </div>
 
-        {/* OVERVIEW TAB */}
+        {/* OVERVIEW, USERS, TESTS, QUESTIONS tabs remain unchanged */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <Card>
@@ -411,12 +383,7 @@ export default function AdminPage() {
                 <CardTitle>Users ({filteredUsers.length})</CardTitle>
                 <div className="relative w-72">
                   <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
+                  <Input placeholder="Search email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
               </div>
             </CardHeader>
@@ -434,18 +401,10 @@ export default function AdminPage() {
                   {filteredUsers.map((user) => (
                     <tr key={user.id} className="border-b last:border-0">
                       <td className="py-3 px-4">{user.email}</td>
+                      <td className="py-3 px-4"><Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge></td>
+                      <td className="py-3 px-4">{user.blocked ? <Badge variant="destructive">Blocked</Badge> : <Badge variant="outline">Active</Badge>}</td>
                       <td className="py-3 px-4">
-                        <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        {user.blocked ? <Badge variant="destructive">Blocked</Badge> : <Badge variant="outline">Active</Badge>}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant={user.blocked ? "default" : "destructive"}
-                          onClick={() => blockUser(user.id, !user.blocked)}
-                        >
+                        <Button size="sm" variant={user.blocked ? "default" : "destructive"} onClick={() => blockUser(user.id, !user.blocked)}>
                           <ShieldX className="w-3 h-3 mr-1" />
                           {user.blocked ? "Unblock" : "Block"}
                         </Button>
@@ -458,12 +417,11 @@ export default function AdminPage() {
           </Card>
         )}
 
-        {/* TESTS TAB */}
+        {/* TESTS & QUESTIONS tabs unchanged for brevity - they stay exactly as before */}
+
         {activeTab === "tests" && (
           <Card>
-            <CardHeader>
-              <CardTitle>Tests ({filteredTests.length})</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Tests ({filteredTests.length})</CardTitle></CardHeader>
             <CardContent>
               <table className="w-full">
                 <thead>
@@ -481,13 +439,8 @@ export default function AdminPage() {
                       <td className="py-3 px-4 font-semibold">{test.score}</td>
                       <td className="py-3 px-4 text-muted-foreground">{new Date(test.createdAt).toLocaleDateString()}</td>
                       <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteTest(test.id)}
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          Delete
+                        <Button size="sm" variant="destructive" onClick={() => deleteTest(test.id)}>
+                          <Trash2 className="w-3 h-3 mr-1" /> Delete
                         </Button>
                       </td>
                     </tr>
@@ -498,7 +451,6 @@ export default function AdminPage() {
           </Card>
         )}
 
-        {/* QUESTIONS TAB */}
         {activeTab === "questions" && (
           <Card>
             <CardHeader>
@@ -506,12 +458,7 @@ export default function AdminPage() {
                 <CardTitle>Questions ({filteredQuestions.length})</CardTitle>
                 <div className="relative w-72">
                   <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search question..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
+                  <Input placeholder="Search question..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
               </div>
             </CardHeader>
@@ -529,20 +476,11 @@ export default function AdminPage() {
                   {filteredQuestions.map((q) => (
                     <tr key={q.id} className="border-b last:border-0">
                       <td className="py-3 px-4 text-sm">{q.question.substring(0, 80)}...</td>
+                      <td className="py-3 px-4"><Badge variant="secondary">{q.type}</Badge></td>
+                      <td className="py-3 px-4"><Badge variant={q.difficulty >= 4 ? "destructive" : "outline"}>{q.difficulty}</Badge></td>
                       <td className="py-3 px-4">
-                        <Badge variant="secondary">{q.type}</Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant={q.difficulty >= 4 ? "destructive" : "outline"}>{q.difficulty}</Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteQuestion(q.id)}
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          Delete
+                        <Button size="sm" variant="destructive" onClick={() => deleteQuestion(q.id)}>
+                          <Trash2 className="w-3 h-3 mr-1" /> Delete
                         </Button>
                       </td>
                     </tr>
@@ -554,7 +492,6 @@ export default function AdminPage() {
         )}
       </main>
 
-      {/* Floating AI Button */}
       <button
         onClick={() => setAiModalOpen(true)}
         className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 hover:scale-105 transition-transform"
@@ -564,7 +501,6 @@ export default function AdminPage() {
         <span className="font-medium">Generate Random Question</span>
       </button>
 
-      {/* AI Modal */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -572,7 +508,6 @@ export default function AdminPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-background rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
           >
-            {/* Header */}
             <div className="p-6 border-b flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Sparkles className="w-6 h-6 text-purple-500" />
@@ -581,19 +516,16 @@ export default function AdminPage() {
               <button onClick={() => { setAiModalOpen(false); setDebugOpen(false) }} className="text-2xl leading-none">×</button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-auto p-6 space-y-6">
               <div className="flex items-center gap-3">
                 <span className="font-medium text-sm">Difficulty (Groq only):</span>
                 <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((level) => (
+                  {[1,2,3,4,5].map(level => (
                     <button
                       key={level}
                       onClick={() => setSelectedDifficulty(level)}
                       className={`w-8 h-8 rounded-lg font-bold text-sm flex items-center justify-center transition-all ${
-                        selectedDifficulty === level
-                          ? "bg-purple-600 text-white shadow-md"
-                          : "bg-muted hover:bg-muted-foreground/20"
+                        selectedDifficulty === level ? "bg-purple-600 text-white shadow-md" : "bg-muted hover:bg-muted-foreground/20"
                       }`}
                     >
                       {level}
@@ -603,44 +535,28 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Button
-                  onClick={generateRandomQuestion}
-                  disabled={generating}
-                  className="py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600 flex items-center gap-2"
-                >
+                <Button onClick={generateRandomQuestion} disabled={generating} className="py-7 text-lg bg-gradient-to-r from-purple-600 to-violet-600 flex items-center gap-2">
                   {generating ? <Loader2 className="animate-spin" /> : <Wand2 />}
                   Groq – Text Question
                 </Button>
-                <Button
-                  onClick={generateVisualQuestion}
-                  disabled={generating}
-                  className="py-7 text-lg bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center gap-2"
-                >
+                <Button onClick={generateVisualQuestion} disabled={generating} className="py-7 text-lg bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center gap-2">
                   {generating ? <Loader2 className="animate-spin" /> : <ImageIcon />}
                   Replicate – Visual Question
                 </Button>
               </div>
 
-              {/* Preview */}
               {generatedQuestion && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
                   <h3 className="font-semibold mb-3">Generated Question</h3>
                   {generatedQuestion.imageUrl && (
                     <div className="mb-6 border rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
-                      <img
-                        src={generatedQuestion.imageUrl}
-                        alt="Generated Visual IQ Question"
-                        className="w-full h-auto max-h-96 object-contain mx-auto"
-                      />
+                      <img src={generatedQuestion.imageUrl} alt="Generated Visual" className="w-full h-auto max-h-96 object-contain mx-auto" />
                     </div>
                   )}
                   <p className="text-lg leading-relaxed mb-6">{generatedQuestion.question}</p>
                   <div className="space-y-3">
                     {generatedQuestion.options.map((opt: string, i: number) => (
-                      <div
-                        key={i}
-                        className={`p-4 rounded-xl border ${i === generatedQuestion.correctAnswer ? "border-green-500 bg-green-50 dark:bg-green-950" : "border-border"}`}
-                      >
+                      <div key={i} className={`p-4 rounded-xl border ${i === generatedQuestion.correctAnswer ? "border-green-500 bg-green-50 dark:bg-green-950" : "border-border"}`}>
                         {opt}
                         {i === generatedQuestion.correctAnswer && <CheckCircle className="inline ml-2 w-4 h-4 text-green-500" />}
                       </div>
@@ -650,7 +566,6 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Fixed Footer Buttons */}
             <div className="p-6 border-t flex gap-3 bg-background">
               <Button onClick={saveGeneratedQuestion} className="flex-1" disabled={!generatedQuestion}>
                 Save to Question Bank
@@ -663,12 +578,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* LIVE DEBUG CONSOLE */}
-      <DebugConsole
-        isOpen={debugOpen}
-        logs={debugLogs}
-        onClose={() => setDebugOpen(false)}
-      />
+      <DebugConsole isOpen={debugOpen} logs={debugLogs} onClose={() => setDebugOpen(false)} />
     </div>
   )
 }
