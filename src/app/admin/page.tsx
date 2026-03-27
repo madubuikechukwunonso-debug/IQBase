@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
-// === DEBUG CONSOLE COMPONENT (popup terminal that shows live AI streaming tokens) ===
+// === DEBUG CONSOLE COMPONENT ===
 const DebugConsole = ({ isOpen, logs, onClose }: {
   isOpen: boolean
   logs: { id: number; text: string; type: "info" | "error" | "success" }[]
@@ -79,11 +79,13 @@ export default function AdminPage() {
   const [tests, setTests] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
-  // AI Modal - Automatic Generation
+
+  // AI Modal
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
-  // Hardcoded prompts for random generation
+
+  // Hardcoded prompts
   const hardcodedPrompts = [
     "Create a challenging logical reasoning question about conditional statements and syllogisms.",
     "Create a pattern recognition question with numbers or shapes that requires deep observation.",
@@ -94,7 +96,8 @@ export default function AdminPage() {
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
   ]
-  // === NEW: Debug console states ===
+
+  // Debug console
   const [debugOpen, setDebugOpen] = useState(false)
   const [debugLogs, setDebugLogs] = useState<{ id: number; text: string; type: "info" | "error" | "success" }[]>([])
 
@@ -136,13 +139,13 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === FIXED: generateRandomQuestion with Groq stream parsing ===
+  // === FIXED: Robust Groq / Vercel AI SDK stream parsing ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
     setDebugOpen(true)
     setDebugLogs([])
-    // Pick random prompt
+
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
 
     addLog("🚀 Starting Groq generation (streaming)...", "info")
@@ -164,8 +167,8 @@ export default function AdminPage() {
       if (!reader) throw new Error("No stream reader available")
 
       const decoder = new TextDecoder()
-      let buffer = ""          // raw buffer for debug console
-      let cleanJsonText = ""   // cleaned text ONLY for JSON parsing
+      let buffer = ""           // raw for debug
+      let cleanJsonText = ""    // cleaned text for JSON parsing
 
       while (true) {
         const { done, value } = await reader.read()
@@ -174,20 +177,26 @@ export default function AdminPage() {
         const chunk = decoder.decode(value, { stream: true })
         buffer += chunk
 
-        // Show EVERY raw token live in the debug console (exactly what you asked for)
+        // Show every raw token live in console
         addLog(chunk, "info")
 
-        // === CLEAN Groq stream (only take content from "0:" data lines) ===
-        const lines = chunk.split('\n')
+        // === ROBUST CLEANING FOR AI SDK STREAM ===
+        const lines = chunk.split("\n")
         for (const line of lines) {
-          if (line.startsWith('0:')) {
-            const content = line.slice(2).trim()
-            cleanJsonText += content
+          if (line.startsWith("0:")) {
+            try {
+              // The part after "0:" is a JSON-encoded string
+              const content = JSON.parse(line.slice(2))
+              cleanJsonText += content
+            } catch (e) {
+              // fallback for malformed lines
+              cleanJsonText += line.slice(2)
+            }
           }
         }
       }
 
-      // Extract the first complete JSON object from the cleaned text
+      // Extract the complete JSON object
       const jsonMatch = cleanJsonText.match(/\{[\s\S]*?\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
@@ -216,7 +225,7 @@ export default function AdminPage() {
         alert("✅ Question saved to database!")
         setAiModalOpen(false)
         setGeneratedQuestion(null)
-        setDebugOpen(false) // close console after successful save
+        setDebugOpen(false)
       } else {
         alert("Failed to save question")
       }
@@ -279,6 +288,7 @@ export default function AdminPage() {
             Tests
           </button>
         </div>
+
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -328,6 +338,7 @@ export default function AdminPage() {
             </Card>
           </div>
         )}
+
         {/* USERS TAB */}
         {activeTab === "users" && (
           <Card>
@@ -382,6 +393,7 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
+
         {/* TESTS TAB */}
         {activeTab === "tests" && (
           <Card>
@@ -422,6 +434,7 @@ export default function AdminPage() {
           </Card>
         )}
       </main>
+
       {/* Floating AI Button */}
       <button
         onClick={() => setAiModalOpen(true)}
@@ -431,7 +444,8 @@ export default function AdminPage() {
         <Wand2 className="w-5 h-5" />
         <span className="font-medium">Generate Random Question</span>
       </button>
-      {/* AI Modal - Automatic */}
+
+      {/* AI Modal */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -488,7 +502,8 @@ export default function AdminPage() {
           </motion.div>
         </div>
       )}
-      {/* === LIVE DEBUG CONSOLE POPUP (appears automatically during generation) === */}
+
+      {/* LIVE DEBUG CONSOLE */}
       <DebugConsole
         isOpen={debugOpen}
         logs={debugLogs}
