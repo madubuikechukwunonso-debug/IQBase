@@ -156,15 +156,17 @@ export default function AdminPage() {
     fetchData()
   }
 
-  // === GROQ - Text / Normal Questions ===
+  // === GROQ - Text Question + Visual Description ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
     setDebugOpen(true)
     setDebugLogs([])
+
     const randomPrompt = hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
-    addLog("🚀 Starting GROQ (text) generation...", "info")
+    addLog("🚀 Starting GROQ (text + visual description) generation...", "info")
     addLog(`Prompt: ${randomPrompt} | Difficulty: ${selectedDifficulty}`, "info")
+
     try {
       const res = await fetch("/api/admin/generate-question", {
         method: "POST",
@@ -174,11 +176,27 @@ export default function AdminPage() {
           difficulty: selectedDifficulty
         }),
       })
+
       if (!res.ok) throw new Error("Generation failed")
+
       const parsed = await res.json()
-      setGeneratedQuestion(parsed)
+
+      // Groq now returns visualDescription → use it for image
+      const imageRes = await fetch("/api/admin/generate-visual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: parsed.visualDescription || parsed.question }),
+      })
+
+      const imageData = await imageRes.json()
+      if (!imageRes.ok || !imageData.success) {
+        throw new Error(imageData.error || "Image generation failed")
+      }
+
+      const fullQuestion = { ...parsed, imageUrl: imageData.image }
+      setGeneratedQuestion(fullQuestion)
       setLastType("text")
-      addLog("✅ Groq text question parsed!", "success")
+      addLog("✅ Groq question + Hugging Face image ready!", "success")
     } catch (err: any) {
       addLog(`❌ ${err.message}`, "error")
       console.error(err)
@@ -187,29 +205,33 @@ export default function AdminPage() {
     }
   }
 
-  // === REPLICATE - Visual / Image Questions (SIMPLE JSON) ===
+  // === REPLICATE / Hugging Face - Visual Question (uses Groq description) ===
   const generateVisualQuestion = async () => {
     setGenerating(true)
     setGeneratedQuestion(null)
     setDebugOpen(true)
     setDebugLogs([])
+
     const randomVisualPrompt = visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
     addLog("🚀 Starting REPLICATE (Flux visual image) generation...", "info")
     addLog(`Prompt: ${randomVisualPrompt}`, "info")
+
     try {
       const imageRes = await fetch("/api/admin/generate-visual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: randomVisualPrompt }),
       })
+
       const imageData = await imageRes.json()
       if (!imageRes.ok || !imageData.success) {
         throw new Error(imageData.error || "Image generation failed")
       }
-      const imageUrl = imageData.image
-      addLog("✅ Replicate Flux image generated!", "success")
 
-      // Generate matching text question
+      const imageUrl = imageData.image
+      addLog("✅ Hugging Face image generated!", "success")
+
+      // Generate matching text question from Groq
       addLog("🚀 Generating matching text question (Groq)...", "info")
       const textRes = await fetch("/api/admin/generate-question", {
         method: "POST",
@@ -219,7 +241,9 @@ export default function AdminPage() {
           difficulty: selectedDifficulty
         }),
       })
+
       if (!textRes.ok) throw new Error("Text generation failed")
+
       const parsed = await textRes.json()
       const fullQuestion = { ...parsed, imageUrl }
       setGeneratedQuestion(fullQuestion)
