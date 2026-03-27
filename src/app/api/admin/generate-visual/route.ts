@@ -1,6 +1,5 @@
 // src/app/api/admin/generate-visual/route.ts
-// ✅ CLEAN & FINAL VERSION FOR AI SDK v6 + @ai-sdk/replicate v2
-// (No experimental_, no casts, no Buffer conversion needed)
+// ✅ FINAL WORKING VERSION (AI SDK v6 + Replicate Flux)
 
 import { generateImage } from 'ai';
 import { replicate } from '@ai-sdk/replicate';
@@ -19,12 +18,12 @@ export async function POST(req: NextRequest) {
     const { image } = await generateImage({
       model,
       prompt: prompt.trim(),
-      n: 1,
-      size: '1024x1024',
+      aspectRatio: '1:1',           // Official & supported for Flux-Schnell
     });
 
-    // ✅ NEW in AI SDK v6: image is a GeneratedFile object with .base64 already ready
-    const dataUrl = `data:image/png;base64,${image.base64}`;
+    // Convert to base64 (works with current AI SDK v6)
+    const base64 = Buffer.from(image.uint8Array).toString('base64');
+    const dataUrl = `data:image/png;base64,${base64}`;
 
     return NextResponse.json({
       success: true,
@@ -32,9 +31,14 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
+    // ← This now returns the REAL error to the browser so you can see it
     console.error('Admin visual generation error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate image' },
+      {
+        success: false,
+        error: error.message || 'Failed to generate image',
+        details: error.stack || 'No stack trace',
+      },
       { status: 500 }
     );
   }
