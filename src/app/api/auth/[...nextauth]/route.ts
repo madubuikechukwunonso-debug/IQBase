@@ -1,70 +1,106 @@
-// src/app/api/auth/register-magic/route.ts
-import { NextRequest, NextResponse } from "next/server"
+// src/app/api/auth/[...nextauth]/route.ts
+import NextAuth from "next-auth"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { PrismaClient } from "@prisma/client"
+import Credentials from "next-auth/providers/credentials"
+import EmailProvider from "next-auth/providers/email"
 import nodemailer from "nodemailer"
-import crypto from "crypto"
+import bcryptjs from "bcryptjs"
+import type { JWT } from "next-auth/jwt"
 
 const prisma = new PrismaClient()
 
-export async function POST(req: NextRequest) {
-  try {
-    const { email } = await req.json()
+const authOptions = {
+  adapter: PrismaAdapter(prisma),
 
-    if (!email || typeof email !== "string" || !email.includes("@")) {
-      return NextResponse.json({ error: "Valid email is required" }, { status: 400 })
-    }
-
-    const trimmedEmail = email.toLowerCase().trim()
-
-    // Create verification token (15 minutes expiry)
-    const token = crypto.randomUUID()
-    const expires = new Date(Date.now() + 15 * 60 * 1000)
-
-    await prisma.verificationToken.create({
-      data: {
-        identifier: trimmedEmail,
-        token,
-        expires,
+  providers: [
+    // Username + Password login (your existing users)
+    Credentials({
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
       },
-    })
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null
 
-    // Build magic link
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-    const magicLink = `${baseUrl}/verify?token=${token}&email=${encodeURIComponent(trimmedEmail)}`
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string }
+        })
 
-    // ✅ HARDCODED BEAUTIFUL HTML EMAIL TEMPLATE
-    const transport = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER_HOST,
-      port: Number(process.env.EMAIL_SERVER_PORT),
-      auth: {
-        user: process.env.EMAIL_SERVER_USER,
-        pass: process.env.EMAIL_SERVER_PASSWORD,
+        if (!user || !user.hashedPassword || !user.emailVerified) return null
+
+        const isValid = await bcryptjs.compare(
+          credentials.password as string,
+          user.hashedPassword
+        )
+
+        return isValid ? user : null
+      }
+    }),
+
+    // Magic link provider (used by register-magic and forgot password)
+    EmailProvider({
+      server: {
+        host: process.env.EMAIL_SERVER_HOST,
+        port: Number(process.env.EMAIL_SERVER_PORT),
+        auth: {
+          user: process.env.EMAIL_SERVER_USER,
+          pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
       },
-    })
-
-    await transport.sendMail({
-      to: trimmedEmail,
       from: process.env.EMAIL_FROM,
-      subject: `Your magic link for IQBase`,
-      html: `
-        <div style="font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 40px; background: #0a0a0a; color: white; border-radius: 16px;">
-          <h1 style="font-size: 28px; margin-bottom: 8px;">Welcome to IQBase 👋</h1>
-          <p style="font-size: 18px; color: #a3a3a3;">Click the button below to verify your email and create your account:</p>
-          <a href="${magicLink}" style="display: inline-block; margin: 24px 0; padding: 16px 32px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 18px;">
-            Create my account
-          </a>
-          <p style="color: #666; font-size: 14px;">Link expires in 15 minutes.</p>
-          <p style="color: #666; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
-        </div>
-      `,
-    })
+      sendVerificationRequest: async ({ identifier: email, url }) => {
+        const transport = nodemailer.createTransport({
+          host: process.env.EMAIL_SERVER_HOST,
+          port: Number(process.env.EMAIL_SERVER_PORT),
+          auth: {
+            user: process.env.EMAIL_SERVER_USER,
+            pass: process.env.EMAIL_SERVER_PASSWORD,
+          },
+        })
 
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error("Register-magic error:", error)
-    return NextResponse.json(
-      { error: "Failed to send magic link. Please try again." },
-      { status: 500 }
-    )
-  }
+        await transport.sendMail({
+          to: email,
+          from: process.env.EMAIL_FROM,
+          subject: `Your magic link for IQBase`,
+          html: `
+            <div style="font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 40px; background: #0a0a0a; color: white; border-radius: 16px;">
+              <h1 style="font-size: 28px; margin-bottom: 8px;">Welcome to IQBase 👋</h1>
+              <p style="font-size: 18px; color: #a3a3a3;">Click the button below to ${url.includes("verify") ? "verify your email and create your account" : "reset your password"}:</p>
+              <a href="${url}" style="display: inline-block; margin: 24px 0; padding: 16px 32px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 18px;">
+                ${url.includes("verify") ? "Create my account" : "Reset password"}
+              </a>
+              <p style="color: #666; font-size: 14px;">Link expires in 15 minutes.</p>
+              <p style="color: #666; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
+            </div>
+          `,
+        })
+      },
+    }),
+  ],
+
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
+
+  callbacks: {
+    async jwt({ token, user }: { token: JWT; user?: any }) {
+      if (user) {
+        token.role = user.role
+      }
+      return token
+    },
+    async session({ session, token }: { session: any; token: JWT }) {
+      if (session.user) {
+        (session.user as any).role = token.role
+      }
+      return session
+    },
+  },
+
+  secret: process.env.NEXTAUTH_SECRET,
 }
+
+const handler = NextAuth(authOptions)
+export { handler as GET, handler as POST }
