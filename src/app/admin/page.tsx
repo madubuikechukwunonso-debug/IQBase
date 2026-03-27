@@ -98,10 +98,26 @@ export default function AdminPage() {
   ]
 
   const visualPrompts = [
-    "Create a visual pattern or matrix IQ question that requires observing shapes, colors or symbols.",
-    "Create a spatial reasoning question with rotating figures or 3D cubes.",
-    "Create a mirror-image or symmetry IQ question.",
-    "Create a visual analogy or figure completion question.",
+    "Create a visual analogy or figure completion question using cultural or historical symbols.",
+    "Create a spatial reasoning question with famous architecture or historical landmarks.",
+    "Create a mirror-image or symmetry IQ question using real-world objects or religious icons.",
+    "Create a visual pattern question based on nature, art, or ancient symbols.",
+    "Create a question that involves comparing figures or scenes from different civilizations.",
+    "Create a figure completion question using mythological or scientific imagery.",
+    "Create a visual analogy using famous religious leaders or spiritual figures.",
+    "Create a spatial reasoning question featuring ancient temples or palaces.",
+    "Create a mirror-image question using traditional clothing or ceremonial attire.",
+    "Create a visual puzzle based on famous historical events or battles.",
+    "Create a figure completion question using elements from world mythology.",
+    "Create a visual analogy using sacred objects from different faiths.",
+    "Create a reasoning question with famous explorers and their ships.",
+    "Create a visual puzzle using royal crowns, thrones, or regalia.",
+    "Create a figure completion question inspired by ancient Egyptian or Greek art.",
+    "Create a visual analogy using traditional festival masks or costumes.",
+    "Create a spatial reasoning question featuring famous bridges or monuments.",
+    "Create a mirror-image question using natural landscapes or famous gardens.",
+    "Create a visual puzzle based on famous literary or theatrical scenes.",
+    "Create a figure completion question using medieval knights or samurai armor.",
   ]
 
   const [debugOpen, setDebugOpen] = useState(false)
