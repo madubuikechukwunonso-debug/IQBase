@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
     const magicLink = `${baseUrl}/verify?token=${token}&email=${encodeURIComponent(trimmedEmail)}`
 
-    // ✅ HARDCODED BEAUTIFUL HTML EMAIL TEMPLATE (restored)
+    // ✅ HARDCODED BEAUTIFUL HTML EMAIL TEMPLATE
     const transport = nodemailer.createTransport({
       host: process.env.EMAIL_SERVER_HOST,
       port: Number(process.env.EMAIL_SERVER_PORT),
