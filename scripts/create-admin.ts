@@ -1,3 +1,4 @@
+// scripts/create-admin.ts
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
@@ -20,18 +21,21 @@ async function main() {
       update: {
         role: 'ADMIN',
         hashedPassword,
+        emailVerified: new Date(),     // ← FIXED
       },
       create: {
         email,
         name: 'Admin',
         role: 'ADMIN',
         hashedPassword,
+        emailVerified: new Date(),     // ← FIXED
       },
     })
 
     console.log(`✅ Admin account created/updated successfully!`)
-    console.log(`   Email    : ${user.email}`)
-    console.log(`   Role     : ${user.role}`)
+    console.log(`   Email          : ${user.email}`)
+    console.log(`   Role           : ${user.role}`)
+    console.log(`   Email Verified : ${user.emailVerified ? 'YES' : 'NO'}`)
   } catch (error) {
     console.error("❌ Failed to create admin:", error)
     process.exit(1)
