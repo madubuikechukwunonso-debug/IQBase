@@ -1,8 +1,8 @@
 // src/app/api/admin/generate-question/route.ts
-import { openai } from "@ai-sdk/openai"
+import { groq } from "@ai-sdk/groq"
 import { streamText } from "ai"
 import { NextResponse } from "next/server"
-import { getUser } from "@/lib/session"   // ← kept your original auth
+import { getUser } from "@/lib/session"
 
 export async function POST(req: Request) {
   const user = await getUser()
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
   const { prompt } = await req.json()
 
-  // Hardcoded prompts fallback (exactly like your frontend)
+  // Your existing hardcoded prompts (kept exactly as before)
   const hardcodedPrompts = [
     "Create a challenging logical reasoning question about conditional statements and syllogisms.",
     "Create a pattern recognition question with numbers or shapes that requires deep observation.",
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   ]
   const finalPrompt = prompt || hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
 
-  console.log("🚀 AI Generator started with prompt:", finalPrompt)
+  console.log("🚀 Groq AI Generator started with prompt:", finalPrompt)
 
   const systemPrompt = `You are an expert IQ test question creator for IQBase.
 Generate **exactly one** valid JSON object. No extra text, no markdown, no explanations outside the JSON.
@@ -45,28 +45,22 @@ Output ONLY the JSON.`
 
   try {
     const result = await streamText({
-      model: openai("gpt-4o-mini"),
+      model: groq("llama-3.3-70b-versatile"),   // Best free Groq model for structured IQ questions
       system: systemPrompt,
       prompt: finalPrompt,
       temperature: 0.7,
-      // Log real errors on the server
-      onError: (error) => {
-        console.error("❌ Raw streamText error:", error)
-      },
     })
 
-    // Return streaming response + forward REAL error messages to your debug console
+    // Stream response with live tokens + real error forwarding to your debug console
     return result.toDataStreamResponse({
       getErrorMessage: (error: unknown) => {
-        console.error("❌ AI SDK Error forwarded to client:", error)
-        const message = error instanceof Error ? error.message : String(error)
-        return `REAL ERROR: ${message}`
+        console.error("❌ Groq Error forwarded:", error)
+        return `REAL ERROR: ${error instanceof Error ? error.message : String(error)}`
       },
     })
   } catch (error: any) {
-    console.error("❌ FULL CATCH BLOCK ERROR:", error)
+    console.error("❌ FULL Groq CATCH ERROR:", error)
 
-    // Stream the real error so your popup console shows it instantly
     const errorStream = new ReadableStream({
       start(controller) {
         controller.enqueue(`REAL ERROR: ${error.message || "Unknown error"}\n`)
