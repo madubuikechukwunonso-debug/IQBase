@@ -26,7 +26,6 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-
     const userId = session.metadata?.userId;
 
     if (!userId) {
@@ -35,27 +34,16 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Mark user as premium (type assertion so it compiles until you add PREMIUM to the enum)
-      await prisma.user.update({
-        where: { id: userId },
-        data: { role: "PREMIUM" as any },
-      });
-
-      // Get latest test
+      // Get the latest test for this user
       const latestTest = await prisma.test.findFirst({
         where: { userId },
         orderBy: { completedAt: "desc" },
         select: {
           id: true,
           score: true,
-          user: {
-            select: { name: true },
-          },
+          user: { select: { name: true } },
           answers: {
-            select: {
-              questionId: true,
-              selectedAnswer: true,
-            },
+            select: { questionId: true, selectedAnswer: true },
           },
         },
       });
