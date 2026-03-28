@@ -1,95 +1,90 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
-import prisma from '@/lib/prisma'
-import { headers } from 'next/headers'
-import { generatePremiumReport } from '@/lib/pdf-generator'
+// src/app/api/stripe/webhook/route.ts
+import { NextResponse } from "next/server";
+import Stripe from "stripe";
+import prisma from "@/lib/prisma";
+import { generatePremiumPDF } from "@/lib/pdf-generator";   // ← FIXED import
+import { headers } from "next/headers";
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-02-24.acacia",
+});
 
-export async function POST(req: NextRequest) {
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  const signature = headers().get("stripe-signature")!;
+
+  let event: Stripe.Event;
+
   try {
-    const payload = await req.text()
-    const headersList = headers()
-    const signature = headersList.get('stripe-signature')
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+  } catch (err: any) {
+    console.error("Webhook signature verification failed:", err.message);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
 
-    const event = stripe.webhooks.constructEvent(payload, signature!, webhookSecret)
+  // Handle successful checkout
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as any
+    const userId = session.metadata?.userId;
+    const testId = session.metadata?.testId;   // optional if you pass it
 
-      // Create payment record
-      const payment = await prisma.payment.create({
-        data: {
-          stripePaymentId: session.id,
-          amount: session.amount_total! / 100,
-          tier: session.metadata.tier as "BASIC" | "PREMIUM",
-          status: 'COMPLETED',
-          userId: session.metadata.userId,
-          testId: session.metadata.testId,
-        },
-      })
-
-      // Update test status to completed (works for both Basic and Premium)
-      if (session.metadata?.testId) {
-        await prisma.test.update({
-          where: { id: session.metadata.testId },
-          data: {
-            status: 'COMPLETED',
-            completedAt: new Date(),
-          },
-        })
-      }
-
-      // If premium, generate and attach PDF
-      if (session.metadata.tier === 'PREMIUM' && session.metadata.testId) {
-        const test = await prisma.test.findUnique({
-          where: { id: session.metadata.testId },
-          include: { user: true },   // ← only valid relation
-        })
-
-        if (test) {
-          // Construct TestResult object using ONLY fields that exist in your Prisma schema
-          const resultForPdf = {
-            score: test.score ?? 0,
-            percentile: test.percentile ?? 0,
-            category: test.category ?? 'General',
-            categoryDescription: 'Your cognitive profile shows strong overall performance.',
-            categoryColor: '#3b82f6',
-            categoryScores: {
-              logical: test.logicalScore ?? 0,
-              pattern: test.patternScore ?? 0,
-              numerical: test.numericalScore ?? 0,
-              speed: test.speedScore ?? 0,
-            },
-            strengths: [],
-            weaknesses: [],
-            recommendations: [
-              'Regular cognitive exercise, adequate sleep, and a healthy diet support optimal brain function.',
-              'Consider exploring new learning domains to diversify your cognitive abilities.',
-            ],
-          }
-
-          const pdfBuffer = await generatePremiumReport(
-            resultForPdf,
-            test.user?.name || test.user?.email || 'IQBase User',
-            test.user?.email || '',
-            new Date()
-          )
-
-          await prisma.test.update({
-            where: { id: test.id },
-            data: { 
-              pdfReport: pdfBuffer, 
-              status: 'COMPLETED' 
-            },
-          })
-        }
-      }
+    if (!userId) {
+      console.error("No userId in session metadata");
+      return NextResponse.json({ received: true });
     }
 
-    return NextResponse.json({ received: true })
-  } catch (error) {
-    console.error('Webhook error:', error)
-    return NextResponse.json({ error: 'Webhook failed' }, { status: 400 })
+    try {
+      // Mark user as premium (or create premium record)
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: "PREMIUM" },   // or whatever flag you use
+      });
+
+      // Get the user's latest test result
+      const latestTest = await prisma.test.findFirst({
+        where: { userId },
+        orderBy: { completedAt: "desc" },
+        include: { result: true },
+      });
+
+      if (!latestTest) {
+        console.error("No test found for user");
+        return NextResponse.json({ received: true });
+      }
+
+      // Get full questions with user answers
+      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
+        cache: "no-store",
+      });
+      const questionsData = await questionsRes.json();
+      const allQuestions = questionsData.questions || [];
+
+      const questionsWithAnswers = allQuestions.map((q: any) => {
+        const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
+        return {
+          ...q,
+          userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
+        };
+      });
+
+      // Generate the PDF
+      const pdfBytes = await generatePremiumPDF(
+        latestTest.result as any,
+        latestTest.user?.name || "Premium User",
+        latestTest.id,
+        questionsWithAnswers
+      );
+
+      // Optional: You can store the PDF in DB or send via email here if needed
+
+      console.log(`✅ Premium PDF generated for user ${userId}, test ${latestTest.id}`);
+    } catch (error: any) {
+      console.error("Error in webhook PDF generation:", error);
+    }
   }
+
+  return NextResponse.json({ received: true });
 }
