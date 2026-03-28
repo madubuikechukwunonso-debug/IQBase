@@ -31,7 +31,7 @@ export default function TestPage() {
   const [result, setResult] = useState<TestResult | null>(null)
   const [testId, setTestId] = useState<string>("")
 
-  // Fetch questions
+  // Fetch questions (now includes imageUrl)
   const fetchQuestions = useCallback(async () => {
     try {
       const res = await fetch("/api/questions")
@@ -137,7 +137,7 @@ export default function TestPage() {
     fetchQuestions()
   }, [fetchQuestions])
 
-  // INTRO
+  // INTRO SCREEN
   if (testState === 'intro') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -156,7 +156,7 @@ export default function TestPage() {
     )
   }
 
-  // COMPLETED
+  // COMPLETED SCREEN
   if (testState === 'completed' && result) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -176,7 +176,7 @@ export default function TestPage() {
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
 
-  // MAIN TEST SCREEN WITH IMAGE SUPPORT
+  // MAIN TEST SCREEN – IMAGE NOW DISPLAYED
   return (
     <div className="p-4 max-w-3xl mx-auto">
       <div className="mb-4 flex justify-between text-sm">
@@ -195,7 +195,7 @@ export default function TestPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* IMAGE DISPLAY – THIS IS THE FIX */}
+          {/* IMAGE RENDERING – THIS IS THE KEY FIX */}
           {currentQuestion.imageUrl && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
