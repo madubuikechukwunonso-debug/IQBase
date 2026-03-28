@@ -43,8 +43,6 @@ export default function TestPage() {
     try {
       const res = await fetch("/api/questions")
       const data = await res.json()
-
-      // Type assertion to fix the TypeScript error
       const dbQuestions: Question[] = data.questions || []
 
       if (dbQuestions.length > 0) {
@@ -95,7 +93,6 @@ export default function TestPage() {
     if (!currentQuestion) return
 
     const timeSpent = (currentQuestion.timeLimit - timeLeft) * 1000
-
     const newAnswer: Answer = {
       questionId: currentQuestion.id,
       selectedAnswer: answerIndex,
@@ -151,6 +148,7 @@ export default function TestPage() {
     fetchQuestions()
   }, [fetchQuestions])
 
+  // ==================== INTRO SCREEN ====================
   if (testState === 'intro') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -169,6 +167,7 @@ export default function TestPage() {
     )
   }
 
+  // ==================== COMPLETED SCREEN ====================
   if (testState === 'completed' && result) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -188,6 +187,7 @@ export default function TestPage() {
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
 
+  // ==================== MAIN TEST SCREEN (WITH IMAGE SUPPORT) ====================
   return (
     <div className="p-4 max-w-3xl mx-auto">
       <div className="mb-4 flex justify-between text-sm">
@@ -197,27 +197,43 @@ export default function TestPage() {
           {timeLeft}s
         </span>
       </div>
+
       <Progress value={(currentIndex / questions.length) * 100} className="mb-6" />
 
       <Card>
         <CardHeader>
-          <CardTitle>{currentQuestion.question}</CardTitle>
+          <CardTitle className="text-xl leading-relaxed">{currentQuestion.question}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {currentQuestion.options.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => handleAnswerSelect(index)}
-              disabled={showFeedback}
-              className={`w-full p-5 text-left border-2 rounded-2xl transition-all ${
-                selectedAnswer === index
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:border-primary/50'
-              }`}
-            >
-              {option}
-            </button>
-          ))}
+
+        <CardContent className="space-y-6">
+          {/* === IMAGE RENDERING (NEW) === */}
+          {currentQuestion.imageUrl && (
+            <div className="border rounded-3xl overflow-hidden bg-white dark:bg-zinc-900">
+              <img
+                src={currentQuestion.imageUrl}
+                alt="Visual question"
+                className="w-full h-auto max-h-[420px] object-contain mx-auto"
+              />
+            </div>
+          )}
+
+          {/* Options */}
+          <div className="space-y-3">
+            {currentQuestion.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswerSelect(index)}
+                disabled={showFeedback}
+                className={`w-full p-5 text-left border-2 rounded-2xl transition-all ${
+                  selectedAnswer === index
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
