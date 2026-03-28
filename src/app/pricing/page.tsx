@@ -1,5 +1,4 @@
 "use client"
-
 import { useState } from "react"
 import { Suspense } from "react"
 import { useSession } from "next-auth/react"
@@ -34,7 +33,6 @@ const pricingTiers = [
       { text: "Shareable result card", included: true },
       { text: "PDF report", included: false },
       { text: "Email delivery", included: false },
-      { text: "Lifetime access", included: false },
     ],
     cta: "Unlock for $1",
     icon: Lock,
@@ -50,7 +48,6 @@ const pricingTiers = [
       { text: "Everything in Basic", included: true },
       { text: "Beautiful PDF report", included: true },
       { text: "Delivered to your email", included: true },
-      { text: "Lifetime access", included: true },
       { text: "Detailed analysis", included: true },
       { text: "Progress tracking", included: true },
       { text: "Priority support", included: true },
@@ -64,13 +61,10 @@ const pricingTiers = [
 function PricingContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
-
   const [hoveredTier, setHoveredTier] = useState<string | null>(null)
   const [loadingTier, setLoadingTier] = useState<string | null>(null)
 
   const resultParam = searchParams.get("result")
-
-  // Safely extract testId from the result JSON parameter
   let testId = ""
   if (resultParam) {
     try {
@@ -84,13 +78,10 @@ function PricingContent() {
   const handleCheckout = async (tier: any) => {
     if (!tier.priceId) {
       alert("Stripe price ID is not configured.\n\nPlease add NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID and NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID to your .env.local file.")
-      console.error("Missing priceId for tier:", tier.id)
       return
     }
-
     if (!session?.user?.email) {
       alert("You must be logged in to purchase.\n\nPlease log in and try again.")
-      console.error("No active session")
       return
     }
 
@@ -103,13 +94,12 @@ function PricingContent() {
         body: JSON.stringify({
           priceId: tier.priceId,
           email: session.user.email,
-          testId: testId,                    // ← Critical fix: now reliably passed
+          testId: testId,
           tier: tier.id.toUpperCase(),
         }),
       })
 
       const data = await res.json()
-
       if (!res.ok) throw new Error(data.error || "Checkout failed")
 
       if (data.url) {
@@ -224,8 +214,8 @@ function PricingContent() {
                   </ul>
                   <Button
                     size="lg"
-                    variant={tier.popular ? 'gradient' : 'outline'}
-                    className={`w-full ${tier.popular ? 'btn-shine' : ''}`}
+                    variant={tier.popular ? "default" : "outline"}
+                    className={`w-full ${tier.popular ? 'bg-gradient-to-r from-primary to-purple-600 hover:from-purple-600 hover:to-primary text-white' : ''}`}
                     onClick={() => handleCheckout(tier)}
                     disabled={loadingTier === tier.id}
                   >
@@ -247,7 +237,7 @@ function PricingContent() {
           ))}
         </motion.div>
 
-        {/* Features Comparison */}
+        {/* Features Comparison Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -273,7 +263,6 @@ function PricingContent() {
                     { feature: "Shareable result card", basic: true, premium: true },
                     { feature: "Beautiful PDF report", basic: false, premium: true },
                     { feature: "Email delivery", basic: false, premium: true },
-                    { feature: "Lifetime access", basic: false, premium: true },
                     { feature: "Detailed analysis", basic: false, premium: true },
                     { feature: "Progress tracking", basic: false, premium: true },
                     { feature: "Priority support", basic: false, premium: true },
@@ -314,7 +303,7 @@ function PricingContent() {
               },
               {
                 q: "Can I retake the test?",
-                a: "Yes! With the Premium plan, you get lifetime access including the ability to retake the test and track your progress over time.",
+                a: "Yes! You can retake the test anytime and track your progress.",
               },
               {
                 q: "Is my payment information secure?",
@@ -376,5 +365,4 @@ export default function PricingPage() {
   )
 }
 
-// Force dynamic rendering (required because we use useSearchParams)
 export const dynamic = 'force-dynamic'
