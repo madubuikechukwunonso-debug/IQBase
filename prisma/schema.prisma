@@ -26,7 +26,6 @@ model User {
 enum UserRole {
   USER
   ADMIN
-  PREMIUM
 }
 
 model Account {
