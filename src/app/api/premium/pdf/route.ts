@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { generatePremiumPDF } from "@/lib/pdf-generator";
-import  prisma  from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -13,13 +13,22 @@ export async function GET() {
   }
 
   try {
-    // Get the latest completed test for this user
+    // Get the latest completed test with result + answers
     const latestTest = await prisma.test.findFirst({
       where: { userId: session.user.id },
       orderBy: { completedAt: "desc" },
-      include: {
-        user: true,
-        answers: true,          // ← FIXED: This was missing
+      select: {
+        id: true,
+        result: true,           // ← FIXED: now included
+        user: {
+          select: { name: true },
+        },
+        answers: {
+          select: {
+            questionId: true,
+            selectedAnswer: true,
+          },
+        },
       },
     });
 
