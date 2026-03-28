@@ -3,22 +3,15 @@ import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
   Brain,
-  Clock,
-  ChevronRight,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Trophy,
-  Timer
+  Timer,
+  Trophy
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
 import { calculateScore } from "@/lib/scoring"
 import { Answer, Question, TestResult } from "@/types"
 import { shuffleArray } from "@/lib/utils"
-import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
@@ -38,7 +31,7 @@ export default function TestPage() {
   const [result, setResult] = useState<TestResult | null>(null)
   const [testId, setTestId] = useState<string>("")
 
-  // Fetch questions from database
+  // Fetch questions
   const fetchQuestions = useCallback(async () => {
     try {
       const res = await fetch("/api/questions")
@@ -49,11 +42,11 @@ export default function TestPage() {
         const shuffled = shuffleArray(dbQuestions).slice(0, QUESTION_COUNT)
         setQuestions(shuffled)
       } else {
-        alert("No questions found in database. Please add some questions in the admin panel first.")
+        alert("No questions found in database. Please add some in the admin panel first.")
       }
     } catch (err) {
       console.error("Failed to fetch questions", err)
-      alert("Failed to load questions from database")
+      alert("Failed to load questions")
     }
   }, [])
 
@@ -106,7 +99,7 @@ export default function TestPage() {
 
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
-        setCurrentIndex(prev => prev + 1)
+        setCurrentIndex((prev) => prev + 1)
         setTimeLeft(questions[currentIndex + 1].timeLimit)
         setSelectedAnswer(null)
         setShowFeedback(false)
@@ -124,10 +117,7 @@ export default function TestPage() {
       const res = await fetch('/api/tests/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers: finalAnswers,
-          result: testResult,
-        }),
+        body: JSON.stringify({ answers: finalAnswers, result: testResult }),
       })
       const data = await res.json()
       if (data.testId) setTestId(data.testId)
@@ -143,12 +133,11 @@ export default function TestPage() {
     }
   }, [testState, result, testId, router])
 
-  // Fetch questions on mount
   useEffect(() => {
     fetchQuestions()
   }, [fetchQuestions])
 
-  // ==================== INTRO SCREEN ====================
+  // INTRO
   if (testState === 'intro') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -167,7 +156,7 @@ export default function TestPage() {
     )
   }
 
-  // ==================== COMPLETED SCREEN ====================
+  // COMPLETED
   if (testState === 'completed' && result) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -187,7 +176,7 @@ export default function TestPage() {
   const currentQuestion = questions[currentIndex]
   if (!currentQuestion) return null
 
-  // ==================== MAIN TEST SCREEN (WITH IMAGE SUPPORT) ====================
+  // MAIN TEST SCREEN WITH IMAGE SUPPORT
   return (
     <div className="p-4 max-w-3xl mx-auto">
       <div className="mb-4 flex justify-between text-sm">
@@ -206,18 +195,22 @@ export default function TestPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* === IMAGE RENDERING (NEW) === */}
+          {/* IMAGE DISPLAY – THIS IS THE FIX */}
           {currentQuestion.imageUrl && (
-            <div className="border rounded-3xl overflow-hidden bg-white dark:bg-zinc-900">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="border rounded-3xl overflow-hidden bg-white dark:bg-zinc-900 shadow-inner"
+            >
               <img
                 src={currentQuestion.imageUrl}
-                alt="Visual question"
-                className="w-full h-auto max-h-[420px] object-contain mx-auto"
+                alt="Visual IQ Question"
+                className="w-full h-auto max-h-[460px] object-contain mx-auto"
               />
-            </div>
+            </motion.div>
           )}
 
-          {/* Options */}
+          {/* Answer Options */}
           <div className="space-y-3">
             {currentQuestion.options.map((option, index) => (
               <button
