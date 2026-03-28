@@ -13,14 +13,13 @@ export async function GET() {
   }
 
   try {
-    // Get the latest completed test with correct fields
+    // Get the latest completed test – only fields that actually exist in your schema
     const latestTest = await prisma.test.findFirst({
       where: { userId: session.user.id },
       orderBy: { completedAt: "desc" },
       select: {
         id: true,
-        score: true,           // ← Correct field
-        breakdown: true,       // ← Correct field (JSON)
+        score: true,           // This field exists
         user: {
           select: { name: true },
         },
@@ -37,10 +36,10 @@ export async function GET() {
       return NextResponse.json({ error: "No completed test found" }, { status: 404 });
     }
 
-    // Reconstruct result object for PDF generator
+    // Build minimal result object for the PDF generator
     const resultForPDF = {
-      score: latestTest.score,
-      breakdown: latestTest.breakdown || [],
+      score: latestTest.score || 0,
+      breakdown: [], // empty for now – PDF generator will still work
     };
 
     // Get all questions
