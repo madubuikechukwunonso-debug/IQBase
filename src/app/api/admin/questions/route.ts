@@ -8,7 +8,6 @@ export async function GET() {
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
-
   try {
     const questions = await prisma.question.findMany({
       orderBy: { createdAt: "desc" },
@@ -21,11 +20,11 @@ export async function GET() {
         correctAnswer: true,
         explanation: true,
         timeLimit: true,
+        imageUrl: true,          // ← ADDED: now returns the image
         isActive: true,
         createdAt: true,
       },
     })
-
     return NextResponse.json({ questions })
   } catch (error: any) {
     console.error("❌ Fetch questions error:", error)
@@ -38,7 +37,6 @@ export async function POST(req: Request) {
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
-
   try {
     const data = await req.json()
 
@@ -48,7 +46,6 @@ export async function POST(req: Request) {
         question: { equals: data.question, mode: "insensitive" },
       },
     })
-
     if (existing) {
       return NextResponse.json(
         { error: "This question already exists in the database." },
@@ -65,11 +62,12 @@ export async function POST(req: Request) {
         correctAnswer: Number(data.correctAnswer),
         explanation: data.explanation || "",
         timeLimit: Number(data.timeLimit) || 60,
+        imageUrl: data.imageUrl || null,        // ← FIXED: now saves the image URL
         isActive: true,
       },
     })
 
-    console.log("✅ Question saved to DB:", savedQuestion.id)
+    console.log("✅ Question saved to DB with image:", savedQuestion.id, savedQuestion.imageUrl)
 
     return NextResponse.json({
       success: true,
@@ -90,19 +88,15 @@ export async function DELETE(req: Request) {
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
-
   const { searchParams } = new URL(req.url)
   const id = searchParams.get("id")
-
   if (!id) {
     return NextResponse.json({ error: "Question ID is required" }, { status: 400 })
   }
-
   try {
     await prisma.question.delete({
       where: { id },
     })
-
     console.log("✅ Question deleted:", id)
     return NextResponse.json({ success: true, message: "Question deleted successfully" })
   } catch (error: any) {
