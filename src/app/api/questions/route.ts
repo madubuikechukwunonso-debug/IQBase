@@ -16,6 +16,7 @@ export async function GET() {
         correctAnswer: true,
         explanation: true,
         timeLimit: true,
+        imageUrl: true,          // ← ADDED: This is what was missing
       },
     })
 
