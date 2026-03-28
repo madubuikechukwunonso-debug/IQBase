@@ -6,7 +6,7 @@ import { generatePremiumPDF } from "@/lib/pdf-generator";
 import { headers } from "next/headers";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",   // ← FIXED: must match your installed stripe package
+  apiVersion: "2024-06-20",
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -35,13 +35,13 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Mark user as premium
+      // Mark user as premium (type assertion so it compiles until you add PREMIUM to the enum)
       await prisma.user.update({
         where: { id: userId },
-        data: { role: "PREMIUM" },
+        data: { role: "PREMIUM" as any },
       });
 
-      // Get latest test with correct fields
+      // Get latest test
       const latestTest = await prisma.test.findFirst({
         where: { userId },
         orderBy: { completedAt: "desc" },
