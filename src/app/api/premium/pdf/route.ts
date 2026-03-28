@@ -13,13 +13,13 @@ export async function GET() {
   }
 
   try {
-    // Get the latest completed test – only fields that actually exist in your schema
+    // Get the latest completed test
     const latestTest = await prisma.test.findFirst({
       where: { userId: session.user.id },
       orderBy: { completedAt: "desc" },
       select: {
         id: true,
-        score: true,           // This field exists
+        score: true,
         user: {
           select: { name: true },
         },
@@ -36,10 +36,10 @@ export async function GET() {
       return NextResponse.json({ error: "No completed test found" }, { status: 404 });
     }
 
-    // Build minimal result object for the PDF generator
+    // Build minimal result object for PDF generator
     const resultForPDF = {
       score: latestTest.score || 0,
-      breakdown: [], // empty for now – PDF generator will still work
+      breakdown: [],
     };
 
     // Get all questions
@@ -68,7 +68,8 @@ export async function GET() {
       questionsWithAnswers
     );
 
-    return new NextResponse(pdfBytes, {
+    // ✅ FIXED: Use Buffer.from to satisfy NextResponse type
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
