@@ -2,11 +2,11 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import prisma from "@/lib/prisma";
-import { generatePremiumPDF } from "@/lib/pdf-generator";   // ← FIXED import
+import { generatePremiumPDF } from "@/lib/pdf-generator";
 import { headers } from "next/headers";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
+  apiVersion: "2024-06-20",   // ← FIXED: must match your installed stripe package
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -24,12 +24,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // Handle successful checkout
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
     const userId = session.metadata?.userId;
-    const testId = session.metadata?.testId;   // optional if you pass it
 
     if (!userId) {
       console.error("No userId in session metadata");
@@ -37,17 +35,29 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Mark user as premium (or create premium record)
+      // Mark user as premium
       await prisma.user.update({
         where: { id: userId },
-        data: { role: "PREMIUM" },   // or whatever flag you use
+        data: { role: "PREMIUM" },
       });
 
-      // Get the user's latest test result
+      // Get latest test with correct fields
       const latestTest = await prisma.test.findFirst({
         where: { userId },
         orderBy: { completedAt: "desc" },
-        include: { result: true },
+        select: {
+          id: true,
+          score: true,
+          user: {
+            select: { name: true },
+          },
+          answers: {
+            select: {
+              questionId: true,
+              selectedAnswer: true,
+            },
+          },
+        },
       });
 
       if (!latestTest) {
@@ -55,30 +65,31 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      // Get full questions with user answers
+      // Get all questions
       const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
         cache: "no-store",
       });
       const questionsData = await questionsRes.json();
       const allQuestions = questionsData.questions || [];
 
+      // Attach user answers
       const questionsWithAnswers = allQuestions.map((q: any) => {
-        const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
+        const userAnswerRecord = latestTest.answers?.find(
+          (a: any) => a.questionId === q.id
+        );
         return {
           ...q,
           userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
         };
       });
 
-      // Generate the PDF
+      // Generate PDF
       const pdfBytes = await generatePremiumPDF(
-        latestTest.result as any,
+        { score: latestTest.score || 0, breakdown: [] } as any,
         latestTest.user?.name || "Premium User",
         latestTest.id,
         questionsWithAnswers
       );
-
-      // Optional: You can store the PDF in DB or send via email here if needed
 
       console.log(`✅ Premium PDF generated for user ${userId}, test ${latestTest.id}`);
     } catch (error: any) {
