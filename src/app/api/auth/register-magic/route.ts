@@ -24,13 +24,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+      return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 });
     }
 
-    // Hash password immediately
+    // Hash the password immediately
     const hashedPassword = await bcryptjs.hash(password, 12);
 
-    // Create verification token
+    // Create verification token with hashed password
     const token = crypto.randomUUID();
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
@@ -39,14 +39,12 @@ export async function POST(req: NextRequest) {
         identifier: email.toLowerCase(),
         token,
         expires,
-        // We store the hashed password here temporarily
-        hashedPassword,   // This assumes you added this optional field to VerificationToken in schema.prisma
+        hashedPassword,   // ← Stored here temporarily
       },
     });
 
     const verifyUrl = `${process.env.NEXTAUTH_URL}/verify?token=${token}&email=${encodeURIComponent(email)}`;
 
-    // Send beautiful magic link email
     await transporter.sendMail({
       from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
       to: email,
