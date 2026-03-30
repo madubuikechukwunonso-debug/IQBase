@@ -58,10 +58,10 @@ model Session {
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
+  identifier     String
+  token          String   @unique
+  expires        DateTime
+  hashedPassword String?   // ← Added for password + magic link flow
   @@unique([identifier, token])
 }
 
@@ -80,10 +80,10 @@ model Test {
   patternScore   Int?
   numericalScore Int?
   speedScore     Int?
-  pdfReport      Bytes?      // ← Added for premium PDF report storage
+  pdfReport      Bytes?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
-  payments       Payment[]   // ← NEW: reverse relation
+  payments       Payment[]
 }
 
 model Answer {
