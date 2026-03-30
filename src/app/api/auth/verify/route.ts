@@ -1,61 +1,57 @@
 // src/app/api/auth/verify/route.ts
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
-const prisma = new PrismaClient()
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const token = searchParams.get("token");
+  const email = searchParams.get("email");
 
-export async function POST(req: NextRequest) {
+  if (!token || !email) {
+    return NextResponse.redirect(new URL("/login?error=invalid-link", req.url));
+  }
+
   try {
-    const { token, email } = await req.json()
-
-    if (!token || !email) {
-      return NextResponse.json({ error: "Token and email are required" }, { status: 400 })
-    }
-
-    const trimmedEmail = email.toLowerCase().trim()
-
-    // Find the verification token
+    // Find the verification token (with stored hashed password)
     const verification = await prisma.verificationToken.findUnique({
-      where: { token }
-    })
+      where: { token },
+    });
 
-    if (!verification || verification.identifier !== trimmedEmail || verification.expires < new Date()) {
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 })
+    if (!verification || verification.identifier !== email.toLowerCase() || verification.expires < new Date()) {
+      return NextResponse.redirect(new URL("/login?error=expired-link", req.url));
     }
 
     // Check if user already exists
     let user = await prisma.user.findUnique({
-      where: { email: trimmedEmail }
-    })
+      where: { email: email.toLowerCase() },
+    });
 
     if (!user) {
-      // Create new user (magic link registration)
+      // Create the user with the stored hashed password
       user = await prisma.user.create({
         data: {
-          email: trimmedEmail,
-          name: trimmedEmail.split("@")[0],
+          email: email.toLowerCase(),
+          name: email.split("@")[0], // temporary name
+          hashedPassword: verification.hashedPassword!, // ← password was stored here
           emailVerified: new Date(),
+          role: "USER",
         },
-      })
-    } else {
-      // Update existing user to verified
+      });
+    } else if (!user.emailVerified) {
+      // If user exists but not verified, update it
       await prisma.user.update({
         where: { id: user.id },
         data: { emailVerified: new Date() },
-      })
+      });
     }
 
     // Delete the used verification token
-    await prisma.verificationToken.delete({
-      where: { token }
-    })
+    await prisma.verificationToken.delete({ where: { token } });
 
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error("Verify route error:", error)
-    return NextResponse.json(
-      { error: "Failed to verify account. Please try again." },
-      { status: 500 }
-    )
+    // Redirect to dashboard (user will be logged in via NextAuth session on next visit)
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  } catch (error) {
+    console.error("Verify error:", error);
+    return NextResponse.redirect(new URL("/login?error=server-error", req.url));
   }
 }
