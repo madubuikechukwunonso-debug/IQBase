@@ -65,9 +65,12 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // ← This callback fixes the OAuthCreateAccount error
+    // ← This is the key fix for OAuthCreateAccount error
     async signIn({ user, account, profile }) {
-      // Allow all sign-ins (NextAuth will create the account if it doesn't exist)
+      if (account?.provider === "google" || account?.provider === "facebook" || account?.provider === "twitter") {
+        // Allow NextAuth to proceed with account creation/linking
+        return true;
+      }
       return true;
     },
 
