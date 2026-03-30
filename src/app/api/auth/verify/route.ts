@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Find verification token (contains hashedPassword)
     const verification = await prisma.verificationToken.findUnique({
       where: { token },
     });
@@ -21,13 +20,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL("/login?error=expired-link", req.url));
     }
 
-    // Check if user already exists
     let user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
 
     if (!user) {
-      // Create the user with the stored hashed password
       user = await prisma.user.create({
         data: {
           email: email.toLowerCase(),
@@ -38,17 +35,14 @@ export async function GET(req: NextRequest) {
         },
       });
     } else if (!user.emailVerified) {
-      // Update existing user
       await prisma.user.update({
         where: { id: user.id },
         data: { emailVerified: new Date() },
       });
     }
 
-    // Delete used token
     await prisma.verificationToken.delete({ where: { token } });
 
-    // Redirect to dashboard (NextAuth will handle login)
     return NextResponse.redirect(new URL("/dashboard", req.url));
   } catch (error) {
     console.error("Verify error:", error);
