@@ -27,19 +27,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 });
     }
 
-    // Hash the password immediately
     const hashedPassword = await bcryptjs.hash(password, 12);
 
-    // Create verification token with hashed password
     const token = crypto.randomUUID();
-    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
 
     await prisma.verificationToken.create({
       data: {
         identifier: email.toLowerCase(),
         token,
         expires,
-        hashedPassword,   // ← Stored here temporarily
+        hashedPassword,
       },
     });
 
@@ -62,7 +60,7 @@ export async function POST(req: NextRequest) {
       `,
     });
 
-    return NextResponse.json({ success: true, message: "Magic link sent" });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Register-magic error:", error);
     return NextResponse.json({ error: "Failed to send magic link" }, { status: 500 });
