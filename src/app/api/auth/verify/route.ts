@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Find the verification token (with stored hashed password)
+    // Find verification token (contains hashedPassword)
     const verification = await prisma.verificationToken.findUnique({
       where: { token },
     });
@@ -31,24 +31,24 @@ export async function GET(req: NextRequest) {
       user = await prisma.user.create({
         data: {
           email: email.toLowerCase(),
-          name: email.split("@")[0], // temporary name
-          hashedPassword: verification.hashedPassword!, // ← password was stored here
+          name: email.split("@")[0],
+          hashedPassword: verification.hashedPassword!,
           emailVerified: new Date(),
           role: "USER",
         },
       });
     } else if (!user.emailVerified) {
-      // If user exists but not verified, update it
+      // Update existing user
       await prisma.user.update({
         where: { id: user.id },
         data: { emailVerified: new Date() },
       });
     }
 
-    // Delete the used verification token
+    // Delete used token
     await prisma.verificationToken.delete({ where: { token } });
 
-    // Redirect to dashboard (user will be logged in via NextAuth session on next visit)
+    // Redirect to dashboard (NextAuth will handle login)
     return NextResponse.redirect(new URL("/dashboard", req.url));
   } catch (error) {
     console.error("Verify error:", error);
