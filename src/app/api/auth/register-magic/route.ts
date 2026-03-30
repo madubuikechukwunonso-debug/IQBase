@@ -1,70 +1,72 @@
 // src/app/api/auth/register-magic/route.ts
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-import nodemailer from "nodemailer"
-import crypto from "crypto"
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import bcryptjs from "bcryptjs";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
-const prisma = new PrismaClient()
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_SERVER_HOST,
+  port: Number(process.env.EMAIL_SERVER_PORT),
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_SERVER_USER,
+    pass: process.env.EMAIL_SERVER_PASSWORD,
+  },
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json()
+    const { email, password } = await req.json();
 
-    if (!email || typeof email !== "string" || !email.includes("@")) {
-      return NextResponse.json({ error: "Valid email is required" }, { status: 400 })
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
 
-    const trimmedEmail = email.toLowerCase().trim()
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
 
-    // Create verification token (valid for 15 minutes)
-    const token = crypto.randomUUID()
-    const expires = new Date(Date.now() + 15 * 60 * 1000)
+    // Hash password immediately
+    const hashedPassword = await bcryptjs.hash(password, 12);
+
+    // Create verification token
+    const token = crypto.randomUUID();
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.verificationToken.create({
       data: {
-        identifier: trimmedEmail,
+        identifier: email.toLowerCase(),
         token,
         expires,
+        // We store the hashed password here temporarily
+        hashedPassword,   // This assumes you added this optional field to VerificationToken in schema.prisma
       },
-    })
+    });
 
-    // Build magic link
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-    const magicLink = `${baseUrl}/verify?token=${token}&email=${encodeURIComponent(trimmedEmail)}`
+    const verifyUrl = `${process.env.NEXTAUTH_URL}/verify?token=${token}&email=${encodeURIComponent(email)}`;
 
-    // ✅ HARDCODED BEAUTIFUL HTML EMAIL TEMPLATE (exactly as you wanted)
-    const transport = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER_HOST,
-      port: Number(process.env.EMAIL_SERVER_PORT),
-      auth: {
-        user: process.env.EMAIL_SERVER_USER,
-        pass: process.env.EMAIL_SERVER_PASSWORD,
-      },
-    })
-
-    await transport.sendMail({
-      to: trimmedEmail,
-      from: process.env.EMAIL_FROM,
-      subject: `Your magic link for IQBase`,
+    // Send beautiful magic link email
+    await transporter.sendMail({
+      from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
+      to: email,
+      subject: "Complete your IQBase registration",
       html: `
-        <div style="font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 40px; background: #0a0a0a; color: white; border-radius: 16px;">
+        <div style="font-family: system-ui; max-width: 600px; margin: 0 auto; padding: 40px; background: #0a0a0a; color: white; border-radius: 20px;">
           <h1 style="font-size: 28px; margin-bottom: 8px;">Welcome to IQBase 👋</h1>
-          <p style="font-size: 18px; color: #a3a3a3;">Click the button below to verify your email and create your account:</p>
-          <a href="${magicLink}" style="display: inline-block; margin: 24px 0; padding: 16px 32px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 18px;">
-            Create my account
+          <p style="font-size: 18px; color: #a3a3a3;">Click the button below to create your account:</p>
+          <a href="${verifyUrl}" style="display: inline-block; margin: 24px 0; padding: 16px 32px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 18px;">
+            Create My Account
           </a>
-          <p style="color: #666; font-size: 14px;">Link expires in 15 minutes.</p>
+          <p style="color: #666; font-size: 14px;">This link expires in 15 minutes.</p>
           <p style="color: #666; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
         </div>
       `,
-    })
+    });
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, message: "Magic link sent" });
   } catch (error: any) {
-    console.error("Register-magic error:", error)
-    return NextResponse.json(
-      { error: "Failed to send magic link. Please try again." },
-      { status: 500 }
-    )
+    console.error("Register-magic error:", error);
+    return NextResponse.json({ error: "Failed to send magic link" }, { status: 500 });
   }
 }
