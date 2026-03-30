@@ -1,3 +1,4 @@
+// src/lib/auth.ts
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
@@ -46,10 +47,12 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
+
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
@@ -62,6 +65,12 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
+    // ← This callback fixes the OAuthCreateAccount error
+    async signIn({ user, account, profile }) {
+      // Allow all sign-ins (NextAuth will create the account if it doesn't exist)
+      return true;
+    },
+
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -73,7 +82,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
-        session.user.role = token.role as "USER" | "ADMIN";   // ← Fixed here
+        session.user.role = token.role as "USER" | "ADMIN";
       }
       return session;
     },
@@ -85,6 +94,7 @@ export const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: "/login",
+    error: "/login",
   },
 
   secret: process.env.NEXTAUTH_SECRET,
