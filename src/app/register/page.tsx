@@ -1,4 +1,3 @@
-// src/app/register/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,13 +6,41 @@ import { Brain } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+
+    // Client-side validation
+    if (!formData.email || !formData.password || !formData.confirmPassword) {
+      setStatus("error");
+      setMessage("Please fill in all fields");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setStatus("error");
+      setMessage("Passwords do not match");
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setStatus("error");
+      setMessage("Password must be at least 8 characters long");
+      return;
+    }
 
     setStatus("loading");
     setMessage("");
@@ -22,7 +49,10 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register-magic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+        }),
       });
 
       const data = await res.json();
@@ -76,7 +106,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        {/* HOMEPAGE LOGO — exactly as requested */}
+        {/* HOMEPAGE LOGO */}
         <div className="flex justify-center">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-purple-600 rounded-3xl flex items-center justify-center shadow-lg">
@@ -114,15 +144,49 @@ export default function RegisterPage() {
               type="email"
               autoComplete="email"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={handleChange}
               className="appearance-none relative block w-full px-3 py-4 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-gray-800 text-base"
               placeholder="your@email.com"
             />
           </div>
 
+          <div>
+            <label htmlFor="password" className="sr-only">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={formData.password}
+              onChange={handleChange}
+              className="appearance-none relative block w-full px-3 py-4 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-gray-800 text-base"
+              placeholder="Create a password"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="confirmPassword" className="sr-only">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="appearance-none relative block w-full px-3 py-4 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-gray-800 text-base"
+              placeholder="Re-enter password"
+            />
+          </div>
+
           {status === "error" && (
-            <div className="text-red-600 dark:text-red-400 text-sm text-center">
+            <div className="text-red-600 dark:text-red-400 text-sm text-center bg-red-50 dark:bg-red-900/30 p-3 rounded-2xl">
               {message}
             </div>
           )}
@@ -140,7 +204,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {/* SOCIAL LOGIN — kept exactly as you had it */}
+        {/* SOCIAL LOGIN */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
