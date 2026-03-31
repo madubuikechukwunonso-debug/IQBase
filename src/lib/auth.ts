@@ -20,24 +20,20 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
-
         if (!user || !user.hashedPassword) return null;
-
         const isValid = await bcrypt.compare(
           credentials.password as string,
           user.hashedPassword
         );
-
         if (!isValid) return null;
-
         return {
           id: user.id,
           email: user.email,
           name: user.name ?? null,
+          image: user.image ?? null,
           role: user.role,
         };
       },
@@ -53,10 +49,21 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
 
+    // ✅ FIXED: Twitter/X with email placeholder + image support
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
       version: "2.0",
+      profile(profile) {
+        return {
+          id: profile.id,
+          name: profile.name,
+          // If Twitter does NOT return an email, we use a placeholder
+          // so the user can be created. The dashboard modal will then ask for a real email.
+          email: profile.email || `${profile.id}@twitter.placeholder.com`,
+          image: profile.profile_image_url || profile.profile_image_url_https || null,
+        };
+      },
     }),
   ],
 
@@ -65,11 +72,10 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // ← THIS IS THE KEY STRUCTURAL FIX
-    async signIn({ user, account, profile }) {
-      // Allow all OAuth providers to create or link accounts
-      if (account?.provider === "google" || 
-          account?.provider === "facebook" || 
+    // Keep your existing signIn callback (allows OAuth account creation)
+    async signIn({ account }) {
+      if (account?.provider === "google" ||
+          account?.provider === "facebook" ||
           account?.provider === "twitter") {
         return true;
       }
@@ -80,6 +86,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.image = user.image; // optional – useful for profile picture
       }
       return token;
     },
@@ -88,6 +95,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token.id) {
         session.user.id = token.id as string;
         session.user.role = token.role as "USER" | "ADMIN";
+        session.user.image = token.image as string | null;
       }
       return session;
     },
