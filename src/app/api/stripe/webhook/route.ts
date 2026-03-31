@@ -75,10 +75,10 @@ export async function POST(req: Request) {
         };
       });
 
-      // === BUILD COMPATIBLE TestResult OBJECT FOR PDF GENERATOR ===
+      // === FULL TestResult OBJECT FOR PDF GENERATOR ===
       const testResultForPDF = {
         ...latestTest,
-        // Fill in the missing required fields that generatePremiumPDF expects
+        // Required fields that were missing
         categoryDescription: latestTest.category || "General IQ Assessment",
         categoryColor: "#8b5cf6",
         categoryScores: {
@@ -87,9 +87,14 @@ export async function POST(req: Request) {
           numerical: latestTest.numericalScore || 0,
           speed: latestTest.speedScore || 0,
         },
-        strengths: ["Strong analytical thinking", "Good pattern recognition"], // fallback values
-        weaknesses: ["Room for improvement in speed"], // fallback values
+        strengths: ["Strong analytical thinking", "Good pattern recognition"],
+        weaknesses: ["Room for improvement in speed"],
         percentile: latestTest.percentile || 50,
+        recommendations: [  // ← THIS WAS THE MISSING FIELD
+          "Practice more numerical reasoning questions to boost your score",
+          "Focus on timed pattern recognition drills to improve speed",
+          "Review logical syllogisms for better accuracy in that category"
+        ],
       };
 
       // Generate PDF
