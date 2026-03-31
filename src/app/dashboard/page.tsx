@@ -52,7 +52,7 @@ export default async function DashboardPage() {
             <Button asChild size="lg" className="gap-2 text-base font-semibold">
               <Link href="/test">
                 <Play className="w-5 h-5" />
-                Start New Test
+                 New Test
               </Link>
             </Button>
 
