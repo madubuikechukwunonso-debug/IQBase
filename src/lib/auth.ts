@@ -49,13 +49,13 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
 
-    // ✅ FIXED: Twitter/X provider for v2 API response (data is nested)
+    // Twitter/X (already fixed in previous step)
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
       version: "2.0",
       profile(profile) {
-        const user = profile.data || profile; // Twitter v2 wraps everything in .data
+        const user = profile.data || profile;
         return {
           id: user.id,
           name: user.name,
@@ -72,12 +72,40 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // ← Your original signIn callback (kept exactly as you had it)
-    async signIn({ account }) {
-      if (account?.provider === "google" ||
-          account?.provider === "facebook" ||
-          account?.provider === "twitter") {
-        return true;
+    // ✅ FIXED: This solves OAuthAccountNotLinked
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google" || account?.provider === "facebook" || account?.provider === "twitter") {
+        // If user already exists by email, link the account automatically
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email as string },
+        });
+
+        if (existingUser) {
+          // Link the OAuth account to the existing user
+          await prisma.account.upsert({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId!,
+              },
+            },
+            update: {},
+            create: {
+              userId: existingUser.id,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId!,
+              refresh_token: account.refresh_token,
+              access_token: account.access_token,
+              expires_at: account.expires_at,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: account.session_state,
+            },
+          });
+          return true;
+        }
       }
       return true;
     },
