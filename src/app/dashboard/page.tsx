@@ -1,32 +1,101 @@
-import { getUser } from "@/lib/session";
-import { redirect } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  Brain,
+  Trophy,
+  TrendingUp,
+  Target,
+  Play,
+  Settings,
+  LogOut,
+  Loader2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { Trophy, TrendingUp, Target, Play, Settings, LogOut, Brain } from "lucide-react";
 import ScoreTrendChart from "./ScoreTrendChart";
 
-const prisma = new PrismaClient();
-
-export default async function DashboardPage() {
-  const user = await getUser();
-  if (!user) redirect("/login");
-
-  const tests = await prisma.test.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
-
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [tests, setTests] = useState<any[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [loading, setLoading] = useState(true);
+  // Profile form
+  const [name, setName] = useState(session?.user?.name || "");
+  // Password change
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  // Redirect if not logged in
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+  // Fetch tests (safe client-side)
+  useEffect(() => {
+    const fetchTests = async () => {
+      if (!session?.user?.id) return;
+      try {
+        const res = await fetch(`/api/user/tests?userId=${session.user.id}`);
+        const data = await res.json();
+        setTests(data.tests || []);
+      } catch (err) {
+        console.error("Failed to fetch tests:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (session?.user?.id) fetchTests();
+    else setLoading(false);
+  }, [session]);
   const totalTests = tests.length;
   const avgScore = totalTests > 0
     ? Math.round(tests.reduce((sum, t) => sum + (t.score || 0), 0) / totalTests)
     : 0;
   const highestPercentile = totalTests > 0
-    ? Math.max(...tests.map(t => t.percentile || 0))
+    ? Math.max(...tests.map((t) => t.percentile || 0))
     : 0;
-
+  const handleLogout = () => {
+    router.push("/api/auth/signout");
+  };
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    alert("Profile updated successfully!");
+    setLoading(false);
+  };
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      alert("New passwords do not match");
+      return;
+    }
+    if (newPassword.length < 8) {
+      alert("Password must be at least 8 characters");
+      return;
+    }
+    setLoading(true);
+    alert("Password changed successfully!");
+    setLoading(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+  if (status === "loading" || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       {/* Modern Header */}
@@ -38,16 +107,14 @@ export default async function DashboardPage() {
             </div>
             <span className="font-bold text-xl">IQBase</span>
           </div>
-
           <div className="flex items-center gap-3">
             {/* Welcome Back (mobile-friendly) */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
               <span className="text-muted-foreground text-sm whitespace-nowrap">Welcome back,</span>
               <span className="font-semibold text-base truncate">
-                {user.name || user.email?.split("@")[0]}
+                {session?.user?.name || "User"}
               </span>
             </div>
-
             {/* Start New Test */}
             <Button asChild size="lg" className="gap-2 text-base font-semibold">
               <Link href="/test">
@@ -55,9 +122,8 @@ export default async function DashboardPage() {
                 Start New Test
               </Link>
             </Button>
-
             {/* Admin Dashboard Button – only for admins */}
-            {user.role === "ADMIN" && (
+            {session?.user?.role === "ADMIN" && (
               <Button asChild variant="outline" size="lg" className="gap-2">
                 <Link href="/admin">
                   <Settings className="w-5 h-5" />
@@ -65,21 +131,16 @@ export default async function DashboardPage() {
                 </Link>
               </Button>
             )}
-
-            {/* Settings Button – now clearly visible */}
+            {/* Settings Button – now visible */}
             <Button
               variant="ghost"
               size="lg"
+              onClick={() => setShowSettings(true)}
               className="flex items-center gap-2"
-              onClick={() => {
-                // Simple trigger – modal is handled by the client component below
-                window.location.href = "#settings-modal";
-              }}
             >
               <Settings className="w-5 h-5" />
               <span className="hidden sm:inline">Settings</span>
             </Button>
-
             {/* Logout Button */}
             <Button asChild variant="ghost" size="lg" className="gap-2">
               <Link href="/api/auth/signout">
@@ -90,30 +151,27 @@ export default async function DashboardPage() {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         {/* Mobile Welcome Back */}
         <div className="sm:hidden mb-8">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-3xl px-6 py-5 shadow-sm">
             <span className="text-muted-foreground text-sm">Welcome back,</span>
             <h1 className="text-3xl font-bold tracking-tight truncate mt-1">
-              {user.name || user.email?.split("@")[0]}
+              {session?.user?.name || "User"}
             </h1>
           </div>
         </div>
-
         {/* Desktop Welcome */}
         <div className="hidden sm:flex items-center justify-between mb-12">
           <div>
             <h1 className="text-4xl font-bold tracking-tight">
-              Welcome back, {user.name || user.email?.split("@")[0]}
+              Welcome back, {session?.user?.name || "User"}
             </h1>
             <p className="text-muted-foreground mt-2 text-lg">
               Track your IQ progress • Improve every test
             </p>
           </div>
         </div>
-
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <Card>
@@ -144,7 +202,6 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-
         {/* Score Trend Chart */}
         {totalTests > 1 && (
           <Card className="mb-12">
@@ -156,7 +213,6 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         )}
-
         {/* Recent Tests */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -205,60 +261,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </main>
-
-      {/* Settings Modal (client component) */}
-      <SettingsModal />
-    </div>
-  );
-}
-
-// ==================== CLIENT MODAL ====================
-"use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
-function SettingsModal() {
-  const [showSettings, setShowSettings] = useState(false);
-  const [name, setName] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // Open modal when hash is present
-  useState(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#settings-modal") {
-      setShowSettings(true);
-    }
-  });
-
-  const handleSaveProfile = async () => {
-    setLoading(true);
-    alert("Profile updated successfully!");
-    setLoading(false);
-  };
-
-  const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      alert("New passwords do not match");
-      return;
-    }
-    if (newPassword.length < 8) {
-      alert("Password must be at least 8 characters");
-      return;
-    }
-    setLoading(true);
-    alert("Password changed successfully!");
-    setLoading(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-  };
-
-  return (
-    <>
+      {/* ==================== SETTINGS MODAL ==================== */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -268,7 +271,9 @@ function SettingsModal() {
           >
             <div className="px-6 py-5 border-b flex items-center justify-between">
               <h2 className="text-xl font-semibold">Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="text-xl">✕</button>
+              <button onClick={() => setShowSettings(false)} className="text-xl">
+                ✕
+              </button>
             </div>
             <div className="p-6 space-y-8">
               {/* Profile Section */}
@@ -283,12 +288,15 @@ function SettingsModal() {
                       placeholder="Your full name"
                     />
                   </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">Email</span>
+                    <Input value={session?.user?.email || ""} disabled />
+                  </div>
                   <Button onClick={handleSaveProfile} disabled={loading} className="w-full">
                     {loading ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </div>
-
               {/* Security Section */}
               <div>
                 <h3 className="font-semibold mb-4">Security</h3>
@@ -330,6 +338,6 @@ function SettingsModal() {
           </motion.div>
         </div>
       )}
-    </>
+    </div>
   );
 }
