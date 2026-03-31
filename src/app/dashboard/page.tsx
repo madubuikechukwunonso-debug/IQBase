@@ -19,8 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { getUser } from "@/lib/session";
-import prisma from "@/lib/prisma";
 import ScoreTrendChart from "./ScoreTrendChart";
 
 export default function DashboardPage() {
@@ -29,7 +27,7 @@ export default function DashboardPage() {
 
   const [tests, setTests] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Profile form
   const [name, setName] = useState(session?.user?.name || "");
@@ -39,26 +37,36 @@ export default function DashboardPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Redirect if not logged in
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     }
   }, [status, router]);
 
+  // Fetch user's tests safely from API
   useEffect(() => {
     const fetchTests = async () => {
-      const user = await getUser();
-      if (user) {
-        const data = await prisma.test.findMany({
-          where: { userId: user.id },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        });
-        setTests(data);
+      if (!session?.user?.id) return;
+
+      try {
+        const res = await fetch(`/api/user/tests?userId=${session.user.id}`);
+        if (!res.ok) throw new Error("Failed to fetch tests");
+        const data = await res.json();
+        setTests(data.tests || []);
+      } catch (err) {
+        console.error("Failed to load tests:", err);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchTests();
-  }, []);
+
+    if (session?.user?.id) {
+      fetchTests();
+    } else {
+      setLoading(false);
+    }
+  }, [session]);
 
   const totalTests = tests.length;
   const avgScore = totalTests > 0
@@ -95,6 +103,17 @@ export default function DashboardPage() {
     setConfirmPassword("");
   };
 
+  if (status === "loading" || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       {/* Header */}
@@ -108,7 +127,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Well-designed Welcome Back Div */}
+            {/* Welcome Back Div */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
               <span className="text-muted-foreground text-sm whitespace-nowrap">Welcome back,</span>
               <span className="font-semibold text-base truncate">
