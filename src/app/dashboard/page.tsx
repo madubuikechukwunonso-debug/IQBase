@@ -14,7 +14,6 @@ import {
   LogOut,
   Loader2,
   X,
-  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,14 +24,11 @@ import prisma from "@/lib/prisma";
 import ScoreTrendChart from "./ScoreTrendChart";
 
 export default function DashboardPage() {
-  const { data: session, status, update } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   const [tests, setTests] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [emailInput, setEmailInput] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Profile form
@@ -42,13 +38,6 @@ export default function DashboardPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Auto-show email modal for Twitter users with placeholder email
-  useEffect(() => {
-    if (session?.user?.email?.endsWith("@twitter.placeholder.com")) {
-      setShowEmailModal(true);
-    }
-  }, [session]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -104,35 +93,6 @@ export default function DashboardPage() {
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-  };
-
-  const handleSubmitEmail = async () => {
-    if (!emailInput || !emailInput.includes("@")) {
-      alert("Please enter a valid email address");
-      return;
-    }
-
-    setEmailLoading(true);
-    try {
-      const res = await fetch("/api/user/update-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailInput.trim() }),
-      });
-
-      if (res.ok) {
-        await update(); // Refresh session so modal disappears
-        setShowEmailModal(false);
-        alert("✅ Email updated successfully!");
-      } else {
-        const error = await res.json();
-        alert(error.error || "Failed to update email");
-      }
-    } catch (err) {
-      alert("Something went wrong. Please try again.");
-    } finally {
-      setEmailLoading(false);
-    }
   };
 
   return (
@@ -297,58 +257,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </main>
-
-      {/* ==================== TWITTER EMAIL MODAL ==================== */}
-      {showEmailModal && (
-        <div className="fixed inset-0 bg-black/70 z-[10000] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-background rounded-3xl max-w-md w-full shadow-2xl"
-          >
-            <div className="px-6 py-5 border-b flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Mail className="w-6 h-6 text-violet-600" />
-                <h2 className="text-xl font-semibold">Complete your profile</h2>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              <p className="text-muted-foreground">
-                Twitter didn&apos;t share your email address. Please enter a real email so we can send you test results, password resets, and updates.
-              </p>
-
-              <Input
-                type="email"
-                placeholder="your@email.com"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                className="text-base"
-              />
-
-              <Button
-                onClick={handleSubmitEmail}
-                disabled={emailLoading}
-                className="w-full text-base"
-                size="lg"
-              >
-                {emailLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Email & Continue"
-                )}
-              </Button>
-
-              <p className="text-xs text-center text-muted-foreground">
-                You can always change this later in Settings
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* ==================== SETTINGS MODAL ==================== */}
       {showSettings && (
