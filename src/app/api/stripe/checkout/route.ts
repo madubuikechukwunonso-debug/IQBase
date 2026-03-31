@@ -1,33 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+// src/app/api/stripe/checkout/route.ts
+import { NextRequest, NextResponse } from "next/server"
+import { stripe } from "@/lib/stripe"
+import { getUser } from "@/lib/session"
 
 export async function POST(req: NextRequest) {
   try {
-    const { priceId, email, testId, tier } = await req.json()
+    const { priceId, testId, tier } = await req.json()
 
-    if (!priceId || !email) {
-      return NextResponse.json({ error: 'Price ID and email required' }, { status: 400 })
+    // Get the currently logged-in user
+    const user = await getUser()
+    if (!user) {
+      return NextResponse.json({ error: "User not authenticated" }, { status: 401 })
     }
 
-    const domainUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    if (!priceId) {
+      return NextResponse.json({ error: "Price ID is required" }, { status: 400 })
+    }
+
+    const domainUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      billing_address_collection: 'auto',
-      customer_email: email,
+      mode: "payment",
+      billing_address_collection: "auto",
+      customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${domainUrl}/results?session_id={CHECKOUT_SESSION_ID}`,
+      
+      // ✅ Use payment-success page so session has time to load
+      success_url: `${domainUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${domainUrl}/pricing`,
+
       metadata: {
-        testId: testId || '',      // ← now guaranteed to be passed
-        email: email,
-        tier: tier || 'BASIC',
+        userId: user.id,           // ← CRITICAL: webhook needs this
+        testId: testId || "",
+        tier: tier || "BASIC",
+        email: user.email || "",
       },
     })
 
     return NextResponse.json({ url: session.url })
-  } catch (error) {
-    console.error('Stripe checkout error:', error)
-    return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })
+  } catch (error: any) {
+    console.error("Stripe checkout error:", error)
+    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
   }
 }
