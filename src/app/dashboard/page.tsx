@@ -147,7 +147,7 @@ export default function DashboardPage() {
               </Button>
             )}
 
-            {/* Settings Button – now visible */}
+            {/* ==================== SETTINGS BUTTON ==================== */}
             <Button
               variant="ghost"
               size="lg"
