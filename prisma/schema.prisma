@@ -8,21 +8,20 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
+  id            String    @id @default(cuid())
+  email         String?   @unique   // ← CHANGED: now optional for Twitter/X
   name          String?
   hashedPassword String?
   emailVerified DateTime?
-  image         String?     // ← Added for Google/X profile pictures
-  role          UserRole @default(USER)
-  blocked       Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  accounts Account[]
-  sessions Session[]
-  tests    Test[]
-  payments Payment[]
+  image         String?               // ← Already present for Google/X profile pictures
+  role          UserRole  @default(USER)
+  blocked       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  tests         Test[]
+  payments      Payment[]
 }
 
 enum UserRole {
@@ -43,9 +42,7 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([provider, providerAccountId])
 }
 
@@ -54,37 +51,36 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
-  identifier     String
-  token          String   @unique
-  expires        DateTime
+  identifier String
+  token      String   @unique
+  expires    DateTime
   hashedPassword String?
   @@unique([identifier, token])
 }
 
 model Test {
-  id             String      @id @default(cuid())
-  userId         String?
-  user           User?       @relation(fields: [userId], references: [id])
-  score          Int?
-  percentile     Int?
-  category       String?
-  answers        Answer[]
-  startedAt      DateTime    @default(now())
-  completedAt    DateTime?
-  status         TestStatus  @default(IN_PROGRESS)
-  logicalScore   Int?
-  patternScore   Int?
-  numericalScore Int?
-  speedScore     Int?
-  pdfReport      Bytes?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  payments       Payment[]
+  id               String       @id @default(cuid())
+  userId           String?
+  user             User?        @relation(fields: [userId], references: [id])
+  score            Int?
+  percentile       Int?
+  category         String?
+  answers          Answer[]
+  startedAt        DateTime     @default(now())
+  completedAt      DateTime?
+  status           TestStatus   @default(IN_PROGRESS)
+  logicalScore     Int?
+  patternScore     Int?
+  numericalScore   Int?
+  speedScore       Int?
+  pdfReport        Bytes?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  payments         Payment[]
 }
 
 model Answer {
