@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Trophy, TrendingUp, Target, Play, Settings, LogOut, Brain, Hourglass } from "lucide-react";
+import { Trophy, TrendingUp, Target, Play, Settings, LogOut, Brain, User, Hourglass } from "lucide-react";
 import ScoreTrendChart from "./ScoreTrendChart";
 
 const prisma = new PrismaClient();
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
             <div className="sm:hidden relative">
               <details className="group">
                 <summary className="flex items-center gap-2 cursor-pointer list-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <Hourglass className="w-5 h-5" />
+                  <User className="w-5 h-5" />   {/* ← Profile silhouette icon as requested */}
                 </summary>
                 <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-3xl shadow-xl py-2 z-50 overflow-hidden">
                   {/* Admin (only if admin) */}
