@@ -4,12 +4,24 @@ import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 import { generatePremiumPDF } from "@/lib/pdf-generator";
 import { headers } from "next/headers";
+import nodemailer from "nodemailer";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+// Simple nodemailer transporter (use your env vars)
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_SERVER_HOST,
+  port: Number(process.env.EMAIL_SERVER_PORT),
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_SERVER_USER,
+    pass: process.env.EMAIL_SERVER_PASSWORD,
+  },
+});
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -25,65 +37,84 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-
     const userId = session.metadata?.userId;
     const testId = session.metadata?.testId;
 
-    if (!userId) {
-      console.warn("⚠️ No userId in session metadata");
+    if (!userId || !testId) {
+      console.error("Missing userId or testId in metadata");
       return NextResponse.json({ received: true });
     }
 
     try {
-      // Mark test as completed (if testId exists)
-      if (testId) {
-        await prisma.test.update({
-          where: { id: testId },
-          data: { status: "COMPLETED" },
-        });
+      // Get latest test
+      const latestTest = await prisma.test.findFirst({
+        where: { id: testId, userId },
+        include: {
+          user: { select: { name: true, email: true } },
+          answers: true,
+        },
+      });
+
+      if (!latestTest) {
+        console.error("No test found for this payment");
+        return NextResponse.json({ received: true });
       }
 
-      // Generate premium PDF report
-      if (testId) {
-        const latestTest = await prisma.test.findUnique({
-          where: { id: testId },
-          include: {
-            user: { select: { name: true } },
-            answers: true,
+      // Get all questions
+      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
+        cache: "no-store",
+      });
+      const questionsData = await questionsRes.json();
+      const allQuestions = questionsData.questions || [];
+
+      // Attach user answers
+      const questionsWithAnswers = allQuestions.map((q: any) => {
+        const userAnswerRecord = latestTest.answers?.find(
+          (a: any) => a.questionId === q.id
+        );
+        return {
+          ...q,
+          userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
+        };
+      });
+
+      // Generate PDF
+      const pdfBytes = await generatePremiumPDF(
+        latestTest,
+        latestTest.user?.name || "Premium User",
+        latestTest.id,
+        questionsWithAnswers
+      );
+
+      // SAVE PDF to database (this was missing!)
+      await prisma.test.update({
+        where: { id: testId },
+        data: { pdfReport: pdfBytes },
+      });
+
+      // SEND PDF via email automatically
+      await transporter.sendMail({
+        from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
+        to: latestTest.user?.email,
+        subject: "Your Premium IQBase Report is Ready!",
+        html: `
+          <h2>Congratulations on your Premium Report!</h2>
+          <p>Hi ${latestTest.user?.name || "there"},</p>
+          <p>Your detailed PDF report is attached.</p>
+          <p>Thank you for choosing Premium!</p>
+        `,
+        attachments: [
+          {
+            filename: `IQBase-Premium-Report-${latestTest.id}.pdf`,
+            content: pdfBytes,
+            contentType: "application/pdf",
           },
-        });
+        ],
+      });
 
-        if (latestTest) {
-          const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
-            cache: "no-store",
-          });
-          const questionsData = await questionsRes.json();
-          const allQuestions = questionsData.questions || [];
-
-          const questionsWithAnswers = allQuestions.map((q: any) => {
-            const userAnswerRecord = latestTest.answers.find(
-              (a: any) => a.questionId === q.id
-            );
-            return {
-              ...q,
-              userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
-            };
-          });
-
-          const pdfBytes = await generatePremiumPDF(
-            { score: latestTest.score || 0, breakdown: [] } as any,
-            latestTest.user?.name || "Premium User",
-            latestTest.id,
-            questionsWithAnswers
-          );
-
-          console.log(`✅ Premium PDF generated for user ${userId}, test ${testId}`);
-        }
-      }
-
-      console.log(`✅ Payment processing completed successfully for user ${userId}`);
+      console.log(`✅ Premium PDF generated, saved, and emailed to ${latestTest.user?.email}`);
     } catch (error: any) {
-      console.error("Error in webhook processing:", error);
+      console.error("Error in webhook PDF generation/email:", error);
     }
   }
 
