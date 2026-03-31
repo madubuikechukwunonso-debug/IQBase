@@ -107,7 +107,7 @@ export default function DashboardPage() {
             <span className="font-bold text-xl">IQBase</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Well-designed Welcome Back Div */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
               <span className="text-muted-foreground text-sm whitespace-nowrap">Welcome back,</span>
@@ -115,6 +115,14 @@ export default function DashboardPage() {
                 {session?.user?.name || "User"}
               </span>
             </div>
+
+            {/* Start New Test Button - Placed near Settings */}
+            <Button asChild size="sm" className="gap-2 text-base font-semibold hidden md:flex">
+              <Link href="/test">
+                <Play className="w-4 h-4" />
+                Start New Test
+              </Link>
+            </Button>
 
             {/* Settings Button */}
             <Button
@@ -156,12 +164,6 @@ export default function DashboardPage() {
               Track your IQ progress • Improve every test
             </p>
           </div>
-          <Button asChild size="lg" className="gap-2 text-base font-semibold">
-            <Link href="/test">
-              <Play className="w-5 h-5" />
-              Start New Test
-            </Link>
-          </Button>
         </div>
 
         {/* Stats Row */}
