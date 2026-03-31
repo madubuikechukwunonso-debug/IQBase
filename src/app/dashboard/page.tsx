@@ -66,17 +66,12 @@ export default async function DashboardPage() {
               </Button>
             )}
 
-            {/* Settings Button */}
-            <Button
-              variant="ghost"
-              size="lg"
-              className="flex items-center gap-2"
-              onClick={() => {
-                window.location.href = "#settings-modal";
-              }}
-            >
-              <Settings className="w-5 h-5" />
-              <span className="hidden sm:inline">Settings</span>
+            {/* Settings Button – links to your new /settings page */}
+            <Button asChild variant="ghost" size="lg" className="gap-2">
+              <Link href="/settings">
+                <Settings className="w-5 h-5" />
+                <span className="hidden sm:inline">Settings</span>
+              </Link>
             </Button>
 
             {/* Logout Button */}
@@ -204,131 +199,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </main>
-
-      {/* Settings Modal (client component) */}
-      <SettingsModal />
     </div>
-  );
-}
-
-// ==================== CLIENT MODAL ====================
-"use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
-function SettingsModal() {
-  const [showSettings, setShowSettings] = useState(false);
-  const [name, setName] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // Trigger modal from header button via hash
-  useState(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#settings-modal") {
-      setShowSettings(true);
-    }
-  });
-
-  const handleSaveProfile = async () => {
-    setLoading(true);
-    alert("Profile updated successfully!");
-    setLoading(false);
-  };
-
-  const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      alert("New passwords do not match");
-      return;
-    }
-    if (newPassword.length < 8) {
-      alert("Password must be at least 8 characters");
-      return;
-    }
-    setLoading(true);
-    alert("Password changed successfully!");
-    setLoading(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-  };
-
-  return (
-    <>
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-background rounded-3xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl"
-          >
-            <div className="px-6 py-5 border-b flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="text-xl">✕</button>
-            </div>
-            <div className="p-6 space-y-8">
-              {/* Profile Section */}
-              <div>
-                <h3 className="font-semibold mb-4">Profile</h3>
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-sm text-muted-foreground block mb-1">Name</span>
-                    <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Your full name"
-                    />
-                  </div>
-                  <Button onClick={handleSaveProfile} disabled={loading} className="w-full">
-                    {loading ? "Saving..." : "Save Changes"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Security Section */}
-              <div>
-                <h3 className="font-semibold mb-4">Security</h3>
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-sm text-muted-foreground block mb-1">Current Password</span>
-                    <Input
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <span className="text-sm text-muted-foreground block mb-1">New Password</span>
-                    <Input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <span className="text-sm text-muted-foreground block mb-1">Confirm New Password</span>
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    onClick={handleChangePassword}
-                    disabled={loading}
-                    className="w-full"
-                  >
-                    {loading ? "Changing..." : "Change Password"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </>
   );
 }
