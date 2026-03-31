@@ -1,11 +1,12 @@
-"use client"
-
-import { useEffect } from "react"
+// src/app/payment-success/page.tsx
+import { Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { useEffect } from "react"
 import { Loader2 } from "lucide-react"
 
-export default function PaymentSuccessPage() {
+// Inner client component (contains the hooks)
+function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { data: session, status, update } = useSession()
@@ -14,20 +15,18 @@ export default function PaymentSuccessPage() {
   useEffect(() => {
     if (status === "loading") return
 
-    // Force refresh session after Stripe redirect
     if (sessionId && status === "authenticated") {
-      update()
-      // Give NextAuth a moment to set the cookie
-      setTimeout(() => {
+      // Refresh session to ensure it's loaded after Stripe redirect
+      update().then(() => {
         router.push(`/results?session_id=${sessionId}`)
-      }, 800)
+      })
       return
     }
 
-    // If session not ready yet, wait and retry
+    // Fallback redirect if session is still not ready
     const timer = setTimeout(() => {
       router.push(`/results?session_id=${sessionId}`)
-    }, 1200)
+    }, 1500)
 
     return () => clearTimeout(timer)
   }, [sessionId, status, router, update])
@@ -42,3 +41,24 @@ export default function PaymentSuccessPage() {
     </div>
   )
 }
+
+// Server wrapper with Suspense boundary (required by Next.js)
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin mx-auto mb-6 text-primary" />
+            <p className="text-muted-foreground">Processing payment...</p>
+          </div>
+        </div>
+      }
+    >
+      <PaymentSuccessContent />
+    </Suspense>
+  )
+}
+
+// Force dynamic rendering (important for search params)
+export const dynamic = "force-dynamic"
