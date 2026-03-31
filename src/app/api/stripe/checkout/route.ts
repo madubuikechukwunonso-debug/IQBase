@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   try {
     const { priceId, testId, tier } = await req.json()
 
-    // Get the currently logged-in user
+    // Get the authenticated user
     const user = await getUser()
     if (!user) {
       return NextResponse.json({ error: "User not authenticated" }, { status: 401 })
@@ -22,15 +22,15 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       billing_address_collection: "auto",
-      customer_email: user.email,
+      customer_email: user.email || undefined,   // ← Fixed: never null
       line_items: [{ price: priceId, quantity: 1 }],
-      
-      // ✅ Use payment-success page so session has time to load
+
+      // Use payment-success page so session has time to load
       success_url: `${domainUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${domainUrl}/pricing`,
 
       metadata: {
-        userId: user.id,           // ← CRITICAL: webhook needs this
+        userId: user.id,           // ← Critical for webhook
         testId: testId || "",
         tier: tier || "BASIC",
         email: user.email || "",
