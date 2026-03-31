@@ -44,28 +44,23 @@ export default function DashboardPage() {
     }
   }, [status, router]);
 
-  // Fetch user's tests safely from API
+  // Fetch user's tests safely
   useEffect(() => {
     const fetchTests = async () => {
       if (!session?.user?.id) return;
-
       try {
         const res = await fetch(`/api/user/tests?userId=${session.user.id}`);
-        if (!res.ok) throw new Error("Failed to fetch tests");
         const data = await res.json();
         setTests(data.tests || []);
       } catch (err) {
-        console.error("Failed to load tests:", err);
+        console.error("Failed to fetch tests:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (session?.user?.id) {
-      fetchTests();
-    } else {
-      setLoading(false);
-    }
+    if (session?.user?.id) fetchTests();
+    else setLoading(false);
   }, [session]);
 
   const totalTests = tests.length;
@@ -127,7 +122,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Welcome Back Div */}
+            {/* Welcome Back Div – mobile friendly */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
               <span className="text-muted-foreground text-sm whitespace-nowrap">Welcome back,</span>
               <span className="font-semibold text-base truncate">
