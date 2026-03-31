@@ -49,16 +49,18 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
 
-    // Twitter/X (already fixed in previous step)
+    // Twitter/X provider – uses real email when provided
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
       version: "2.0",
       profile(profile) {
-        const user = profile.data || profile;
+        const user = profile.data || profile; // Twitter v2 wraps data inside .data
+
         return {
           id: user.id,
           name: user.name,
+          // ✅ Only use placeholder if Twitter does NOT return an email
           email: user.email || `${user.id}@twitter.placeholder.com`,
           image: user.profile_image_url || user.profile_image_url_https || null,
           role: "USER",
@@ -72,16 +74,16 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // ✅ FIXED: This solves OAuthAccountNotLinked
-    async signIn({ user, account, profile }) {
-      if (account?.provider === "google" || account?.provider === "facebook" || account?.provider === "twitter") {
-        // If user already exists by email, link the account automatically
+    // Auto-link existing accounts (prevents OAuthAccountNotLinked error)
+    async signIn({ user, account }) {
+      if (account?.provider === "google" || 
+          account?.provider === "facebook" || 
+          account?.provider === "twitter") {
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email as string },
         });
 
         if (existingUser) {
-          // Link the OAuth account to the existing user
           await prisma.account.upsert({
             where: {
               provider_providerAccountId: {
