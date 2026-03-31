@@ -66,14 +66,14 @@ export default async function DashboardPage() {
               </Button>
             )}
 
-            {/* Settings Button */}
+            {/* Settings Button – now clearly visible */}
             <Button
               variant="ghost"
               size="lg"
               className="flex items-center gap-2"
               onClick={() => {
-                // This button will be wired to the modal in the client wrapper below
-                window.location.href = "#settings-modal"; // simple trigger for modal
+                // Simple trigger – modal is handled by the client component below
+                window.location.href = "#settings-modal";
               }}
             >
               <Settings className="w-5 h-5" />
@@ -212,7 +212,7 @@ export default async function DashboardPage() {
   );
 }
 
-// Client component for the interactive modal
+// ==================== CLIENT MODAL ====================
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -226,6 +226,13 @@ function SettingsModal() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Open modal when hash is present
+  useState(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#settings-modal") {
+      setShowSettings(true);
+    }
+  });
 
   const handleSaveProfile = async () => {
     setLoading(true);
@@ -252,7 +259,6 @@ function SettingsModal() {
 
   return (
     <>
-      {/* Trigger button is already in the header above */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
           <motion.div
@@ -271,7 +277,11 @@ function SettingsModal() {
                 <div className="space-y-4">
                   <div>
                     <span className="text-sm text-muted-foreground block mb-1">Name</span>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your full name"
+                    />
                   </div>
                   <Button onClick={handleSaveProfile} disabled={loading} className="w-full">
                     {loading ? "Saving..." : "Save Changes"}
@@ -285,17 +295,33 @@ function SettingsModal() {
                 <div className="space-y-4">
                   <div>
                     <span className="text-sm text-muted-foreground block mb-1">Current Password</span>
-                    <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                    <Input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground block mb-1">New Password</span>
-                    <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground block mb-1">Confirm New Password</span>
-                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
                   </div>
-                  <Button onClick={handleChangePassword} disabled={loading} className="w-full">
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={loading}
+                    className="w-full"
+                  >
                     {loading ? "Changing..." : "Change Password"}
                   </Button>
                 </div>
