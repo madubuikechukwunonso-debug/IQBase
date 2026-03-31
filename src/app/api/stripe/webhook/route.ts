@@ -58,10 +58,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, { cache: "no-store" });
+      // Get all questions
+      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
+        cache: "no-store",
+      });
       const questionsData = await questionsRes.json();
       const allQuestions = questionsData.questions || [];
 
+      // Attach user answers
       const questionsWithAnswers = allQuestions.map((q: any) => {
         const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
         return {
@@ -70,20 +74,22 @@ export async function POST(req: Request) {
         };
       });
 
-      // Full TestResult object expected by generatePremiumPDF
+      // === FULL TestResult OBJECT (with all required fields and non-null values) ===
       const testResultForPDF = {
         ...latestTest,
+        score: latestTest.score ?? 0,
+        percentile: latestTest.percentile ?? 50,
+        category: latestTest.category ?? "General",
         categoryDescription: latestTest.category || "General IQ Assessment",
         categoryColor: "#8b5cf6",
         categoryScores: {
-          logical: latestTest.logicalScore || 0,
-          pattern: latestTest.patternScore || 0,
-          numerical: latestTest.numericalScore || 0,
-          speed: latestTest.speedScore || 0,
+          logical: latestTest.logicalScore ?? 0,
+          pattern: latestTest.patternScore ?? 0,
+          numerical: latestTest.numericalScore ?? 0,
+          speed: latestTest.speedScore ?? 0,
         },
         strengths: ["Strong analytical thinking", "Good pattern recognition"],
         weaknesses: ["Room for improvement in speed"],
-        percentile: latestTest.percentile || 50,
         recommendations: [
           "Practice more numerical reasoning questions",
           "Focus on timed pattern recognition drills",
@@ -91,6 +97,7 @@ export async function POST(req: Request) {
         ],
       };
 
+      // Generate PDF
       const pdfBytes = await generatePremiumPDF(
         testResultForPDF,
         latestTest.user?.name || "Premium User",
@@ -98,21 +105,21 @@ export async function POST(req: Request) {
         questionsWithAnswers
       );
 
-      // SAVE PDF TO DATABASE
+      // Save PDF to database
       await prisma.test.update({
         where: { id: testId },
         data: { pdfReport: pdfBytes },
       });
 
-      // SEND EMAIL WITH PDF
+      // Send email with PDF
       await transporter.sendMail({
         from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
         to: latestTest.user?.email,
         subject: "Your Premium IQBase Report is Ready! 🎉",
         html: `
-          <h2>Congratulations!</h2>
+          <h2>Congratulations on unlocking Premium!</h2>
           <p>Hi ${latestTest.user?.name || "there"},</p>
-          <p>Your detailed Premium PDF report is attached.</p>
+          <p>Your detailed PDF report is attached.</p>
           <p>Thank you for choosing Premium!</p>
         `,
         attachments: [
