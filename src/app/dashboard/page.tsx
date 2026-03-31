@@ -58,7 +58,6 @@ export default function DashboardPage() {
         setLoading(false);
       }
     };
-
     if (session?.user?.id) fetchTests();
     else setLoading(false);
   }, [session]);
@@ -147,6 +146,17 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             )}
+
+            {/* Settings Button – now visible */}
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="w-5 h-5" />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
 
             {/* Logout Button */}
             <Button asChild variant="ghost" size="lg" className="gap-2">
