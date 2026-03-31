@@ -28,10 +28,10 @@ export default function DashboardPage() {
   const [tests, setTests] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);   // ← added for debugging
 
   // Profile form
   const [name, setName] = useState(session?.user?.name || "");
+
   // Password change
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -48,15 +48,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchTests = async () => {
       if (!session?.user?.id) return;
-      setFetchError(null);
       try {
         const res = await fetch(`/api/user/tests?userId=${session.user.id}`);
-        if (!res.ok) throw new Error("Failed to load tests");
         const data = await res.json();
         setTests(data.tests || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to fetch tests:", err);
-        setFetchError(err.message || "Could not load your test history");
       } finally {
         setLoading(false);
       }
@@ -122,6 +119,7 @@ export default function DashboardPage() {
             </div>
             <span className="font-bold text-xl">IQBase</span>
           </div>
+
           <div className="flex items-center gap-3">
             {/* Welcome Back (mobile-friendly) */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
@@ -130,6 +128,7 @@ export default function DashboardPage() {
                 {session?.user?.name || "User"}
               </span>
             </div>
+
             {/* Start New Test */}
             <Button asChild size="lg" className="gap-2 text-base font-semibold">
               <Link href="/test">
@@ -137,6 +136,7 @@ export default function DashboardPage() {
                 Start New Test
               </Link>
             </Button>
+
             {/* Admin Dashboard Button – only for admins */}
             {session?.user?.role === "ADMIN" && (
               <Button asChild variant="outline" size="lg" className="gap-2">
@@ -146,6 +146,7 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             )}
+
             {/* Settings Button – now visible */}
             <Button
               variant="ghost"
@@ -156,6 +157,7 @@ export default function DashboardPage() {
               <Settings className="w-5 h-5" />
               <span className="hidden sm:inline">Settings</span>
             </Button>
+
             {/* Logout Button */}
             <Button asChild variant="ghost" size="lg" className="gap-2">
               <Link href="/api/auth/signout">
@@ -189,13 +191,6 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-
-        {/* Show fetch error if any */}
-        {fetchError && (
-          <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-xl mb-6">
-            ⚠️ {fetchError}
-          </div>
-        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -325,6 +320,7 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               </div>
+
               {/* Security Section */}
               <div>
                 <h3 className="font-semibold mb-4">Security</h3>
