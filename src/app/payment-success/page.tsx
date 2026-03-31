@@ -1,3 +1,5 @@
+"use client"
+
 // src/app/payment-success/page.tsx
 import { Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -5,7 +7,7 @@ import { useSession } from "next-auth/react"
 import { useEffect } from "react"
 import { Loader2 } from "lucide-react"
 
-// Inner client component (contains the hooks)
+// Inner client component that uses the hooks
 function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -16,14 +18,13 @@ function PaymentSuccessContent() {
     if (status === "loading") return
 
     if (sessionId && status === "authenticated") {
-      // Refresh session to ensure it's loaded after Stripe redirect
       update().then(() => {
         router.push(`/results?session_id=${sessionId}`)
       })
       return
     }
 
-    // Fallback redirect if session is still not ready
+    // Fallback redirect if session is not ready yet
     const timer = setTimeout(() => {
       router.push(`/results?session_id=${sessionId}`)
     }, 1500)
