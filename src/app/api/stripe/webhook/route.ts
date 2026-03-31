@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Get the test
+      // Get full test data
       const latestTest = await prisma.test.findFirst({
         where: { id: testId, userId },
         include: {
@@ -60,7 +60,9 @@ export async function POST(req: Request) {
       }
 
       // Get all questions
-      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, { cache: "no-store" });
+      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
+        cache: "no-store",
+      });
       const questionsData = await questionsRes.json();
       const allQuestions = questionsData.questions || [];
 
@@ -73,29 +75,46 @@ export async function POST(req: Request) {
         };
       });
 
+      // === BUILD COMPATIBLE TestResult OBJECT FOR PDF GENERATOR ===
+      const testResultForPDF = {
+        ...latestTest,
+        // Fill in the missing required fields that generatePremiumPDF expects
+        categoryDescription: latestTest.category || "General IQ Assessment",
+        categoryColor: "#8b5cf6",
+        categoryScores: {
+          logical: latestTest.logicalScore || 0,
+          pattern: latestTest.patternScore || 0,
+          numerical: latestTest.numericalScore || 0,
+          speed: latestTest.speedScore || 0,
+        },
+        strengths: ["Strong analytical thinking", "Good pattern recognition"], // fallback values
+        weaknesses: ["Room for improvement in speed"], // fallback values
+        percentile: latestTest.percentile || 50,
+      };
+
       // Generate PDF
       const pdfBytes = await generatePremiumPDF(
-        latestTest,
+        testResultForPDF,
         latestTest.user?.name || "Premium User",
         latestTest.id,
         questionsWithAnswers
       );
 
-      // SAVE PDF to database (critical missing piece)
+      // Save PDF to database
       await prisma.test.update({
         where: { id: testId },
         data: { pdfReport: pdfBytes },
       });
 
-      // SEND EMAIL with PDF attachment
+      // Send email with PDF
       await transporter.sendMail({
         from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
         to: latestTest.user?.email,
         subject: "Your Premium IQBase Report is Ready! 🎉",
         html: `
-          <h2>Congratulations!</h2>
+          <h2>Congratulations on unlocking Premium!</h2>
           <p>Hi ${latestTest.user?.name || "there"},</p>
-          <p>Your detailed Premium PDF report is attached.</p>
+          <p>Your detailed PDF report is attached.</p>
           <p>Thank you for choosing Premium!</p>
         `,
         attachments: [
@@ -107,7 +126,7 @@ export async function POST(req: Request) {
         ],
       });
 
-      console.log(`✅ Premium PDF saved to DB and emailed to ${latestTest.user?.email}`);
+      console.log(`✅ Premium PDF saved and emailed to ${latestTest.user?.email}`);
     } catch (error: any) {
       console.error("Error in webhook PDF generation/email:", error);
     }
