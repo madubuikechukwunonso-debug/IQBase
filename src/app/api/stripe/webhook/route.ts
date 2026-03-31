@@ -12,7 +12,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-// Simple nodemailer transporter (use your env vars)
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_SERVER_HOST,
   port: Number(process.env.EMAIL_SERVER_PORT),
@@ -46,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Get latest test
+      // Get the test
       const latestTest = await prisma.test.findFirst({
         where: { id: testId, userId },
         include: {
@@ -61,17 +60,13 @@ export async function POST(req: Request) {
       }
 
       // Get all questions
-      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
-        cache: "no-store",
-      });
+      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, { cache: "no-store" });
       const questionsData = await questionsRes.json();
       const allQuestions = questionsData.questions || [];
 
       // Attach user answers
       const questionsWithAnswers = allQuestions.map((q: any) => {
-        const userAnswerRecord = latestTest.answers?.find(
-          (a: any) => a.questionId === q.id
-        );
+        const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
         return {
           ...q,
           userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
@@ -86,21 +81,21 @@ export async function POST(req: Request) {
         questionsWithAnswers
       );
 
-      // SAVE PDF to database (this was missing!)
+      // SAVE PDF to database (critical missing piece)
       await prisma.test.update({
         where: { id: testId },
         data: { pdfReport: pdfBytes },
       });
 
-      // SEND PDF via email automatically
+      // SEND EMAIL with PDF attachment
       await transporter.sendMail({
         from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
         to: latestTest.user?.email,
-        subject: "Your Premium IQBase Report is Ready!",
+        subject: "Your Premium IQBase Report is Ready! 🎉",
         html: `
-          <h2>Congratulations on your Premium Report!</h2>
+          <h2>Congratulations!</h2>
           <p>Hi ${latestTest.user?.name || "there"},</p>
-          <p>Your detailed PDF report is attached.</p>
+          <p>Your detailed Premium PDF report is attached.</p>
           <p>Thank you for choosing Premium!</p>
         `,
         attachments: [
@@ -112,7 +107,7 @@ export async function POST(req: Request) {
         ],
       });
 
-      console.log(`✅ Premium PDF generated, saved, and emailed to ${latestTest.user?.email}`);
+      console.log(`✅ Premium PDF saved to DB and emailed to ${latestTest.user?.email}`);
     } catch (error: any) {
       console.error("Error in webhook PDF generation/email:", error);
     }
