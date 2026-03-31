@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import { getUser } from "@/lib/session";
 import prisma from "@/lib/prisma";
 import ScoreTrendChart from "./ScoreTrendChart";
