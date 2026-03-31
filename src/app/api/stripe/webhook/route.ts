@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 import { generatePremiumPDF } from "@/lib/pdf-generator";
 import { headers } from "next/headers";
+import nodemailer from "nodemailer";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -11,12 +12,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_SERVER_HOST,
+  port: Number(process.env.EMAIL_SERVER_PORT),
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_SERVER_USER,
+    pass: process.env.EMAIL_SERVER_PASSWORD,
+  },
+});
+
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = headers().get("stripe-signature")!;
 
   let event: Stripe.Event;
-
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err: any) {
@@ -27,61 +37,96 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId;
+    const testId = session.metadata?.testId;
 
-    if (!userId) {
-      console.error("No userId in session metadata");
+    if (!userId || !testId) {
+      console.error("Missing userId or testId in metadata");
       return NextResponse.json({ received: true });
     }
 
     try {
-      // Get the latest test for this user
       const latestTest = await prisma.test.findFirst({
-        where: { userId },
-        orderBy: { completedAt: "desc" },
-        select: {
-          id: true,
-          score: true,
-          user: { select: { name: true } },
-          answers: {
-            select: { questionId: true, selectedAnswer: true },
-          },
+        where: { id: testId, userId },
+        include: {
+          user: { select: { name: true, email: true } },
+          answers: true,
         },
       });
 
       if (!latestTest) {
-        console.error("No test found for user");
+        console.error("No test found for this payment");
         return NextResponse.json({ received: true });
       }
 
-      // Get all questions
-      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
-        cache: "no-store",
-      });
+      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, { cache: "no-store" });
       const questionsData = await questionsRes.json();
       const allQuestions = questionsData.questions || [];
 
-      // Attach user answers
       const questionsWithAnswers = allQuestions.map((q: any) => {
-        const userAnswerRecord = latestTest.answers?.find(
-          (a: any) => a.questionId === q.id
-        );
+        const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
         return {
           ...q,
           userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
         };
       });
 
-      // Generate PDF
+      // Full TestResult object expected by generatePremiumPDF
+      const testResultForPDF = {
+        ...latestTest,
+        categoryDescription: latestTest.category || "General IQ Assessment",
+        categoryColor: "#8b5cf6",
+        categoryScores: {
+          logical: latestTest.logicalScore || 0,
+          pattern: latestTest.patternScore || 0,
+          numerical: latestTest.numericalScore || 0,
+          speed: latestTest.speedScore || 0,
+        },
+        strengths: ["Strong analytical thinking", "Good pattern recognition"],
+        weaknesses: ["Room for improvement in speed"],
+        percentile: latestTest.percentile || 50,
+        recommendations: [
+          "Practice more numerical reasoning questions",
+          "Focus on timed pattern recognition drills",
+          "Review logical syllogisms for better accuracy"
+        ],
+      };
+
       const pdfBytes = await generatePremiumPDF(
-        { score: latestTest.score || 0, breakdown: [] } as any,
+        testResultForPDF,
         latestTest.user?.name || "Premium User",
         latestTest.id,
         questionsWithAnswers
       );
 
-      console.log(`✅ Premium PDF generated for user ${userId}, test ${latestTest.id}`);
+      // SAVE PDF TO DATABASE
+      await prisma.test.update({
+        where: { id: testId },
+        data: { pdfReport: pdfBytes },
+      });
+
+      // SEND EMAIL WITH PDF
+      await transporter.sendMail({
+        from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
+        to: latestTest.user?.email,
+        subject: "Your Premium IQBase Report is Ready! 🎉",
+        html: `
+          <h2>Congratulations!</h2>
+          <p>Hi ${latestTest.user?.name || "there"},</p>
+          <p>Your detailed Premium PDF report is attached.</p>
+          <p>Thank you for choosing Premium!</p>
+        `,
+        attachments: [
+          {
+            filename: `IQBase-Premium-Report-${latestTest.id}.pdf`,
+            content: pdfBytes,
+            contentType: "application/pdf",
+          },
+        ],
+      });
+
+      console.log(`✅ Premium PDF saved and emailed to ${latestTest.user?.email}`);
     } catch (error: any) {
-      console.error("Error in webhook PDF generation:", error);
+      console.error("Error in webhook PDF generation/email:", error);
     }
   }
 
