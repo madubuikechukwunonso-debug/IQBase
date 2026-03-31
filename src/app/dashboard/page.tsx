@@ -29,7 +29,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      {/* Modern Header */}
+      {/* Modern Header – mobile-optimized */}
       <header className="border-b bg-background/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
             <span className="font-bold text-xl">IQBase</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3"> {/* ← tighter on mobile */}
             {/* Welcome Back (mobile-friendly) */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
               <span className="text-muted-foreground text-sm whitespace-nowrap">Welcome back,</span>
@@ -48,26 +48,26 @@ export default async function DashboardPage() {
               </span>
             </div>
 
-            {/* Start New Test */}
-            <Button asChild size="lg" className="gap-2 text-base font-semibold">
+            {/* Start New Test – prominent but fits mobile */}
+            <Button asChild size="lg" className="gap-2 text-base font-semibold px-4 sm:px-6">
               <Link href="/test">
                 <Play className="w-5 h-5" />
-                Start New Test
+                <span className="hidden xs:inline">Start New Test</span>
               </Link>
             </Button>
 
             {/* Admin Dashboard Button – only for admins */}
             {user.role === "ADMIN" && (
-              <Button asChild variant="outline" size="lg" className="gap-2">
+              <Button asChild variant="outline" size="lg" className="gap-2 px-3 sm:px-4">
                 <Link href="/admin">
                   <Settings className="w-5 h-5" />
-                  Admin Dashboard
+                  <span className="hidden sm:inline">Admin</span>
                 </Link>
               </Button>
             )}
 
             {/* Settings Button – links to your new /settings page */}
-            <Button asChild variant="ghost" size="lg" className="gap-2">
+            <Button asChild variant="ghost" size="lg" className="gap-2 px-3 sm:px-4">
               <Link href="/settings">
                 <Settings className="w-5 h-5" />
                 <span className="hidden sm:inline">Settings</span>
@@ -75,10 +75,10 @@ export default async function DashboardPage() {
             </Button>
 
             {/* Logout Button */}
-            <Button asChild variant="ghost" size="lg" className="gap-2">
+            <Button asChild variant="ghost" size="lg" className="gap-2 px-3 sm:px-4">
               <Link href="/api/auth/signout">
                 <LogOut className="w-5 h-5" />
-                Logout
+                <span className="hidden sm:inline">Logout</span>
               </Link>
             </Button>
           </div>
