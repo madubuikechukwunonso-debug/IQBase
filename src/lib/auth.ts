@@ -49,19 +49,18 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
 
-    // ✅ FIXED Twitter/X provider
+    // ✅ FIXED: Twitter/X provider for v2 API response (data is nested)
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
       version: "2.0",
       profile(profile) {
+        const user = profile.data || profile; // Twitter v2 wraps everything in .data
         return {
-          id: profile.id,
-          name: profile.name,
-          // Placeholder email if Twitter doesn't return one
-          email: profile.email || `${profile.id}@twitter.placeholder.com`,
-          image: profile.profile_image_url || profile.profile_image_url_https || null,
-          // ← THIS WAS MISSING – required by your Prisma User model
+          id: user.id,
+          name: user.name,
+          email: user.email || `${user.id}@twitter.placeholder.com`,
+          image: user.profile_image_url || user.profile_image_url_https || null,
           role: "USER",
         };
       },
@@ -73,6 +72,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
+    // ← Your original signIn callback (kept exactly as you had it)
     async signIn({ account }) {
       if (account?.provider === "google" ||
           account?.provider === "facebook" ||
