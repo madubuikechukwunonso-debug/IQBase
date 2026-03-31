@@ -13,12 +13,11 @@ import {
   Settings,
   LogOut,
   Loader2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getUser } from "@/lib/session";
 import prisma from "@/lib/prisma";
 import ScoreTrendChart from "./ScoreTrendChart";
@@ -108,7 +107,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Welcome back - Well-designed and mobile-friendly */}
+            {/* Well-designed Welcome Back Div */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
               <span className="text-muted-foreground text-sm whitespace-nowrap">Welcome back,</span>
               <span className="font-semibold text-base truncate">
@@ -271,64 +270,67 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <Tabs defaultValue="profile" className="p-6">
-              <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="profile">Profile</TabsTrigger>
-                <TabsTrigger value="security">Security</TabsTrigger>
-              </TabsList>
+            <div className="p-6 space-y-8">
+              {/* Profile Section */}
+              <div>
+                <h3 className="font-semibold mb-4">Profile</h3>
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">Name</span>
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your full name"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">Email</span>
+                    <Input value={session?.user?.email || ""} disabled />
+                  </div>
+                  <Button onClick={handleSaveProfile} disabled={loading} className="w-full">
+                    {loading ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
 
-              <TabsContent value="profile" className="mt-6 space-y-6">
-                <div>
-                  <Label>Name</Label>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your full name"
-                  />
+              {/* Security Section */}
+              <div>
+                <h3 className="font-semibold mb-4">Security</h3>
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">Current Password</span>
+                    <Input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">New Password</span>
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">Confirm New Password</span>
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    {loading ? "Changing..." : "Change Password"}
+                  </Button>
                 </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input value={session?.user?.email || ""} disabled />
-                </div>
-                <Button onClick={handleSaveProfile} disabled={loading} className="w-full">
-                  {loading ? "Saving..." : "Save Changes"}
-                </Button>
-              </TabsContent>
-
-              <TabsContent value="security" className="mt-6 space-y-6">
-                <div>
-                  <Label>Current Password</Label>
-                  <Input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>New Password</Label>
-                  <Input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Confirm New Password</Label>
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                </div>
-                <Button
-                  onClick={handleChangePassword}
-                  disabled={loading}
-                  className="w-full"
-                >
-                  {loading ? "Changing..." : "Change Password"}
-                </Button>
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}
