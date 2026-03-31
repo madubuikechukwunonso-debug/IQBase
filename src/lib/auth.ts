@@ -49,7 +49,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
 
-    // ✅ FIXED: Twitter/X with email placeholder + image support
+    // ✅ FIXED Twitter/X provider
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
@@ -58,10 +58,11 @@ export const authOptions: NextAuthOptions = {
         return {
           id: profile.id,
           name: profile.name,
-          // If Twitter does NOT return an email, we use a placeholder
-          // so the user can be created. The dashboard modal will then ask for a real email.
+          // Placeholder email if Twitter doesn't return one
           email: profile.email || `${profile.id}@twitter.placeholder.com`,
           image: profile.profile_image_url || profile.profile_image_url_https || null,
+          // ← THIS WAS MISSING – required by your Prisma User model
+          role: "USER",
         };
       },
     }),
@@ -72,7 +73,6 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // Keep your existing signIn callback (allows OAuth account creation)
     async signIn({ account }) {
       if (account?.provider === "google" ||
           account?.provider === "facebook" ||
@@ -86,7 +86,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        token.image = user.image; // optional – useful for profile picture
+        token.image = user.image;
       }
       return token;
     },
