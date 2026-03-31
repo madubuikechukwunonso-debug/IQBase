@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Trophy, TrendingUp, Target, Play, Settings, LogOut, Brain } from "lucide-react";
+import { Trophy, TrendingUp, Target, Play, Settings, LogOut, Brain, Hourglass } from "lucide-react";
 import ScoreTrendChart from "./ScoreTrendChart";
 
 const prisma = new PrismaClient();
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      {/* Modern Header – mobile-optimized */}
+      {/* Modern Header */}
       <header className="border-b bg-background/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
             <span className="font-bold text-xl">IQBase</span>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-3"> {/* ← tighter on mobile */}
+          <div className="flex items-center gap-3">
             {/* Welcome Back (mobile-friendly) */}
             <div className="hidden sm:flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-5 py-2 shadow-sm max-w-[240px]">
               <span className="text-muted-foreground text-sm whitespace-nowrap">Welcome back,</span>
@@ -48,39 +48,81 @@ export default async function DashboardPage() {
               </span>
             </div>
 
-            {/* Start New Test – prominent but fits mobile */}
-            <Button asChild size="lg" className="gap-2 text-base font-semibold px-4 sm:px-6">
+            {/* Start New Test – remains prominent and unchanged */}
+            <Button asChild size="lg" className="gap-2 text-base font-semibold">
               <Link href="/test">
                 <Play className="w-5 h-5" />
-                <span className="hidden xs:inline">Start New Test</span>
+                Start New Test
               </Link>
             </Button>
 
-            {/* Admin Dashboard Button – only for admins */}
-            {user.role === "ADMIN" && (
-              <Button asChild variant="outline" size="lg" className="gap-2 px-3 sm:px-4">
-                <Link href="/admin">
+            {/* ==================== MOBILE DROPDOWN ==================== */}
+            <div className="sm:hidden relative">
+              <details className="group">
+                <summary className="flex items-center gap-2 cursor-pointer list-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <Hourglass className="w-5 h-5" />
+                </summary>
+                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-3xl shadow-xl py-2 z-50 overflow-hidden">
+                  {/* Admin (only if admin) */}
+                  {user.role === "ADMIN" && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-3 px-5 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium"
+                    >
+                      <Hourglass className="w-5 h-5" />
+                      Admin Dashboard
+                    </Link>
+                  )}
+
+                  {/* Settings */}
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium"
+                  >
+                    <Settings className="w-5 h-5" />
+                    Settings
+                  </Link>
+
+                  {/* Logout */}
+                  <Link
+                    href="/api/auth/signout"
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Logout
+                  </Link>
+                </div>
+              </details>
+            </div>
+
+            {/* ==================== DESKTOP BUTTONS ==================== */}
+            <div className="hidden sm:flex items-center gap-3">
+              {/* Admin Dashboard Button – only for admins */}
+              {user.role === "ADMIN" && (
+                <Button asChild variant="outline" size="lg" className="gap-2">
+                  <Link href="/admin">
+                    <Hourglass className="w-5 h-5" />
+                    Admin
+                  </Link>
+                </Button>
+              )}
+
+              {/* Settings Button */}
+              <Button asChild variant="ghost" size="lg" className="gap-2">
+                <Link href="/settings">
                   <Settings className="w-5 h-5" />
-                  <span className="hidden sm:inline">Admin</span>
+                  <span className="hidden sm:inline">Settings</span>
                 </Link>
               </Button>
-            )}
 
-            {/* Settings Button – links to your new /settings page */}
-            <Button asChild variant="ghost" size="lg" className="gap-2 px-3 sm:px-4">
-              <Link href="/settings">
-                <Settings className="w-5 h-5" />
-                <span className="hidden sm:inline">Settings</span>
-              </Link>
-            </Button>
-
-            {/* Logout Button */}
-            <Button asChild variant="ghost" size="lg" className="gap-2 px-3 sm:px-4">
-              <Link href="/api/auth/signout">
-                <LogOut className="w-5 h-5" />
-                <span className="hidden sm:inline">Logout</span>
-              </Link>
-            </Button>
+              {/* Logout Button */}
+              <Button asChild variant="ghost" size="lg" className="gap-2">
+                <Link href="/api/auth/signout">
+                  <LogOut className="w-5 h-5" />
+                  Logout
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
