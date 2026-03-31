@@ -226,7 +226,7 @@ function SettingsModal() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Open modal when hash is present (triggered by Settings button)
+  // Trigger modal from header button via hash
   useState(() => {
     if (typeof window !== "undefined" && window.location.hash === "#settings-modal") {
       setShowSettings(true);
