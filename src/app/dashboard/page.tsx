@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Trophy, TrendingUp, Target, Play, Settings, LogOut } from "lucide-react";
+import { Trophy, TrendingUp, brain, Target, Play, Settings, LogOut } from "lucide-react";
 import ScoreTrendChart from "./ScoreTrendChart";
 
 const prisma = new PrismaClient();
