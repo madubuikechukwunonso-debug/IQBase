@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +9,6 @@ export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
-
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,24 +23,20 @@ export default function LoginClient() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     const form = new FormData(e.currentTarget);
     const email = form.get("email") as string;
     const password = form.get("password") as string;
-
     if (!email || !password) {
       setError("Please fill in both email and password");
       setLoading(false);
       return;
     }
-
     const result = await signIn("credentials", {
       email,
       password,
       redirect: false,
       callbackUrl,
     });
-
     if (result?.error) {
       setError(
         result.error === "CredentialsSignin"
@@ -52,12 +46,10 @@ export default function LoginClient() {
       setLoading(false);
       return;
     }
-
     if (result?.ok) {
       router.refresh();
       router.push(callbackUrl);
     }
-
     setLoading(false);
   }
 
@@ -66,18 +58,14 @@ export default function LoginClient() {
       setForgotError("Please enter a valid email");
       return;
     }
-
     setForgotLoading(true);
     setForgotError(null);
     setForgotSuccess(false);
-
     const result = await signIn("email", {
       email: forgotEmail.trim(),
       redirect: false,
     });
-
     setForgotLoading(false);
-
     if (result?.ok) {
       setForgotSuccess(true);
     } else {
@@ -107,7 +95,6 @@ export default function LoginClient() {
         </div>
         <span className="font-bold text-3xl tracking-tight">IQBase</span>
       </div>
-
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Sign in to your account
@@ -122,7 +109,6 @@ export default function LoginClient() {
           </Link>
         </p>
       </div>
-
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         <div className="rounded-md shadow-sm -space-y-px">
           <div>
@@ -154,13 +140,11 @@ export default function LoginClient() {
             />
           </div>
         </div>
-
         {error && (
           <div className="text-red-600 dark:text-red-400 text-sm text-center bg-red-50 dark:bg-red-900/30 p-3 rounded">
             {error}
           </div>
         )}
-
         <div>
           <button
             type="submit"
@@ -189,7 +173,6 @@ export default function LoginClient() {
             )}
           </button>
         </div>
-
         {/* Forgot Password Button */}
         <div className="text-sm text-center text-gray-500 dark:text-gray-400">
           <button
@@ -215,8 +198,8 @@ export default function LoginClient() {
         </div>
       </div>
 
-      {/* Social sign-in buttons */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Social sign-in buttons – ONLY GOOGLE KEPT */}
+      <div className="grid grid-cols-1 gap-4">
         <button
           type="button"
           onClick={() => handleSocialSignIn("google")}
@@ -233,38 +216,6 @@ export default function LoginClient() {
               <path fill="#EA4335" d="M12 5.48c1.65 0 3.13.57 4.3 1.68l3.2-3.2C17.46 2.09 14.94 1 12 1 7.7 1 3.85 3.85 2.04 7.9l2.62 2.53C5.55 7.47 8.5 5.48 12 5.48z"/>
             </svg>
             Google
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSocialSignIn("facebook")}
-          disabled={loading}
-          className={`flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 transition-colors ${
-            loading ? "cursor-not-allowed" : ""
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
-            </svg>
-            Facebook
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSocialSignIn("twitter")}
-          disabled={loading}
-          className={`flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 transition-colors ${
-            loading ? "cursor-not-allowed" : ""
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black dark:text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.056l-5.512-7.207-6.304 7.207H1.32l8.588-9.81L0 1.153h7.265l4.99 6.6L18.901 1.153zM19.13 20.78h2.04L7.26 3.22H5.1l14.03 17.56z"/>
-            </svg>
-            X
           </span>
         </button>
       </div>
@@ -285,14 +236,12 @@ export default function LoginClient() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-
             <div className="p-6">
               {!forgotSuccess ? (
                 <>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Enter your email address and we'll send you a magic link to reset your password.
                   </p>
-
                   <input
                     type="email"
                     value={forgotEmail}
@@ -300,11 +249,9 @@ export default function LoginClient() {
                     placeholder="your@email.com"
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white"
                   />
-
                   {forgotError && (
                     <p className="text-red-600 dark:text-red-400 text-sm mt-3">{forgotError}</p>
                   )}
-
                   <button
                     onClick={handleForgotPassword}
                     disabled={forgotLoading || !forgotEmail}
