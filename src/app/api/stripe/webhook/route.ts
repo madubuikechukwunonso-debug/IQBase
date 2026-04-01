@@ -58,14 +58,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      // Get all questions
       const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
         cache: "no-store",
       });
       const questionsData = await questionsRes.json();
       const allQuestions = questionsData.questions || [];
 
-      // Attach user answers
       const questionsWithAnswers = allQuestions.map((q: any) => {
         const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
         return {
@@ -74,7 +72,6 @@ export async function POST(req: Request) {
         };
       });
 
-      // === FULL TestResult OBJECT (with all required fields and non-null values) ===
       const testResultForPDF = {
         ...latestTest,
         score: latestTest.score ?? 0,
@@ -97,7 +94,6 @@ export async function POST(req: Request) {
         ],
       };
 
-      // Generate PDF
       const pdfBytes = await generatePremiumPDF(
         testResultForPDF,
         latestTest.user?.name || "Premium User",
@@ -105,13 +101,14 @@ export async function POST(req: Request) {
         questionsWithAnswers
       );
 
-      // Save PDF to database
+      // ✅ FIX: Convert Uint8Array to Buffer before saving to Prisma Bytes field
+      const pdfBuffer = Buffer.from(pdfBytes);
+
       await prisma.test.update({
         where: { id: testId },
-        data: { pdfReport: pdfBytes },
+        data: { pdfReport: pdfBuffer },
       });
 
-      // Send email with PDF
       await transporter.sendMail({
         from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
         to: latestTest.user?.email,
@@ -125,7 +122,7 @@ export async function POST(req: Request) {
         attachments: [
           {
             filename: `IQBase-Premium-Report-${latestTest.id}.pdf`,
-            content: pdfBytes,
+            content: pdfBuffer,
             contentType: "application/pdf",
           },
         ],
