@@ -8,9 +8,10 @@ export async function GET(req: NextRequest) {
   const testId = req.nextUrl.searchParams.get('testId')
 
   try {
-    // 1. Stripe fresh payment flow (session_id)
+    // 1. Stripe fresh payment flow (session_id) – this is used after Basic or Premium checkout
     if (sessionId) {
       const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId)
+
       if (checkoutSession.payment_status !== 'paid') {
         return NextResponse.json({ error: 'Payment not completed yet' }, { status: 400 })
       }
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
       if (!test) {
         return NextResponse.json({ error: 'Test result not found' }, { status: 404 })
       }
+
       return NextResponse.json({ test })
     }
 
@@ -42,6 +44,7 @@ export async function GET(req: NextRequest) {
       if (!test) {
         return NextResponse.json({ error: 'Test result not found' }, { status: 404 })
       }
+
       return NextResponse.json({ test })
     }
 
