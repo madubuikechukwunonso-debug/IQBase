@@ -36,9 +36,18 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+
+    // ← DEBUG: This will show exactly what metadata is being sent
+    console.log("🔍 FULL METADATA RECEIVED IN WEBHOOK:", session.metadata);
+
     const userId = session.metadata?.userId;
     const testId = session.metadata?.testId;
-    const tier = session.metadata?.tier;   // ← "basic" or "premium"
+    const tierRaw = session.metadata?.tier;
+
+    // Make tier detection very robust
+    const tier = tierRaw ? tierRaw.toLowerCase().trim() : "unknown";
+
+    console.log(`📦 Checkout completed → tier: "${tier}" | testId: ${testId} | userId: ${userId}`);
 
     if (!userId || !testId) {
       console.error("Missing userId or testId in metadata");
@@ -59,8 +68,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      // ==================== ONLY RUN PREMIUM LOGIC IF TIER IS PREMIUM ====================
+      // ==================== PREMIUM LOGIC ====================
       if (tier === "premium") {
+        console.log("✅ PREMIUM PLAN DETECTED – generating PDF");
+
         const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
           cache: "no-store",
         });
@@ -130,11 +141,14 @@ export async function POST(req: Request) {
               },
             ],
           });
+          console.log(`✅ Premium PDF emailed to ${latestTest.user.email}`);
         }
+      } 
+      // ==================== BASIC LOGIC ====================
+      else {
+        console.log(`✅ BASIC PLAN DETECTED – no PDF generated`);
+        // You can add any basic-specific logic here in the future
       }
-
-      // For Basic plan we do nothing extra – just mark payment as completed
-      console.log(`✅ Checkout completed for tier: ${tier || "unknown"}`);
     } catch (error: any) {
       console.error("Error in webhook:", error);
     }
