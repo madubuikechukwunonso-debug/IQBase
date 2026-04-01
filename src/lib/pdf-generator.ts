@@ -39,7 +39,7 @@ export async function generatePremiumPDF(
   page.drawText(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, {
     x: 50, y, size: 11, font: helvetica, color: rgb(0.4, 0.4, 0.4),
   });
-  y -= 50;
+  y -= 55;
 
   // BIG SCORE BOX
   y = 505;
@@ -58,13 +58,13 @@ export async function generatePremiumPDF(
   // DETAILED REVIEW
   y = 370;
   page.drawText('Detailed Question Review', { x: 50, y, size: 18, font: helveticaBold, color: rgb(0.1, 0.1, 0.1) });
-  y -= 60;
+  y -= 65;
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
 
-    // Early page break to prevent any cutoff
-    if (y < 280) {
+    // Early page break to avoid any cutoff
+    if (y < 340) {
       page = pdfDoc.addPage([595, 842]);
       y = 750;
     }
@@ -79,7 +79,7 @@ export async function generatePremiumPDF(
       maxWidth: 495,
       lineHeight: 14,
     });
-    y -= 72;
+    y -= 75;
 
     // User answer (red)
     const userOpt = q.userAnswer !== null && q.userAnswer >= 0 ? q.options[q.userAnswer] : "No answer (timed out)";
@@ -101,13 +101,13 @@ export async function generatePremiumPDF(
       maxWidth: 460,
       lineHeight: 13,
     });
-    y -= 170;   // ← Maximum spacing to prevent any overlap or cutoff
+    y -= 230;   // ← MAXIMUM spacing to prevent any cutoff
   }
 
   // FOOTER
   const lastPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-  lastPage.drawText('Digitally Signed by IQBase', { x: 50, y: 120, size: 14, font: helveticaBold, color: rgb(0.55, 0.2, 0.9) });
-  lastPage.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: 50, y: 95, size: 11, font: helvetica, color: rgb(0.4, 0.4, 0.4) });
+  lastPage.drawText('Digitally Signed by IQBase', { x: 50, y: 140, size: 14, font: helveticaBold, color: rgb(0.55, 0.2, 0.9) });
+  lastPage.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: 50, y: 115, size: 11, font: helvetica, color: rgb(0.4, 0.4, 0.4) });
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
