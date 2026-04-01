@@ -8,10 +8,9 @@ export async function GET(req: NextRequest) {
   const testId = req.nextUrl.searchParams.get('testId')
 
   try {
-    // 1. Stripe fresh payment flow (session_id) – this is used after Basic or Premium checkout
+    // 1. Stripe fresh payment flow (session_id)
     if (sessionId) {
       const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId)
-
       if (checkoutSession.payment_status !== 'paid') {
         return NextResponse.json({ error: 'Payment not completed yet' }, { status: 400 })
       }
@@ -26,6 +25,11 @@ export async function GET(req: NextRequest) {
 
       if (!test) {
         return NextResponse.json({ error: 'Test result not found' }, { status: 404 })
+      }
+
+      // Convert Buffer to base64 for JSON response
+      if (test.pdfReport) {
+        test.pdfReport = (test.pdfReport as Buffer).toString('base64')
       }
 
       return NextResponse.json({ test })
@@ -45,10 +49,14 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Test result not found' }, { status: 404 })
       }
 
+      // Convert Buffer to base64 for JSON response
+      if (test.pdfReport) {
+        test.pdfReport = (test.pdfReport as Buffer).toString('base64')
+      }
+
       return NextResponse.json({ test })
     }
 
-    // No ID provided
     return NextResponse.json({ error: 'No session ID or test ID found' }, { status: 400 })
   } catch (error: any) {
     console.error('Verify API error:', error)
