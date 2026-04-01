@@ -27,11 +27,11 @@ export async function generatePremiumPDF(
 
   // HEADER
   page.drawText('IQBase', { x: 50, y, size: 48, font: helveticaBold, color: rgb(0.55, 0.2, 0.9) });
-  y -= 55;
+  y -= 60;
   page.drawText('Premium Cognitive Assessment Report', { x: 50, y, size: 20, font: helveticaBold, color: rgb(0.1, 0.1, 0.1) });
   y -= 55;
 
-  // User info with better spacing
+  // User info
   page.drawText(`Name: ${userName}`, { x: 50, y, size: 13, font: helvetica });
   y -= 28;
   page.drawText(`Test ID: ${testId}`, { x: 50, y, size: 13, font: helvetica, color: rgb(0.3, 0.3, 0.3) });
@@ -39,7 +39,7 @@ export async function generatePremiumPDF(
   page.drawText(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, {
     x: 50, y, size: 11, font: helvetica, color: rgb(0.4, 0.4, 0.4),
   });
-  y -= 45;
+  y -= 50;
 
   // BIG SCORE BOX
   y = 505;
@@ -58,13 +58,13 @@ export async function generatePremiumPDF(
   // DETAILED REVIEW
   y = 370;
   page.drawText('Detailed Question Review', { x: 50, y, size: 18, font: helveticaBold, color: rgb(0.1, 0.1, 0.1) });
-  y -= 55;
+  y -= 60;
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
 
-    // New page if close to bottom
-    if (y < 220) {
+    // Early page break to prevent any cutoff
+    if (y < 280) {
       page = pdfDoc.addPage([595, 842]);
       y = 750;
     }
@@ -79,7 +79,7 @@ export async function generatePremiumPDF(
       maxWidth: 495,
       lineHeight: 14,
     });
-    y -= 68;
+    y -= 72;
 
     // User answer (red)
     const userOpt = q.userAnswer !== null && q.userAnswer >= 0 ? q.options[q.userAnswer] : "No answer (timed out)";
@@ -91,7 +91,7 @@ export async function generatePremiumPDF(
     page.drawText(`Correct answer: ${correctOpt}`, { x: 70, y, size: 10, font: helvetica, color: rgb(0.1, 0.6, 0.1) });
     y -= 32;
 
-    // Explanation
+    // Explanation (very generous spacing)
     page.drawText(q.explanation, {
       x: 70,
       y,
@@ -101,13 +101,13 @@ export async function generatePremiumPDF(
       maxWidth: 460,
       lineHeight: 13,
     });
-    y -= 125; // ← Extra generous spacing to prevent overlap
+    y -= 170;   // ← Maximum spacing to prevent any overlap or cutoff
   }
 
   // FOOTER
   const lastPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-  lastPage.drawText('Digitally Signed by IQBase', { x: 50, y: 90, size: 14, font: helveticaBold, color: rgb(0.55, 0.2, 0.9) });
-  lastPage.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: 50, y: 65, size: 11, font: helvetica, color: rgb(0.4, 0.4, 0.4) });
+  lastPage.drawText('Digitally Signed by IQBase', { x: 50, y: 120, size: 14, font: helveticaBold, color: rgb(0.55, 0.2, 0.9) });
+  lastPage.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: 50, y: 95, size: 11, font: helvetica, color: rgb(0.4, 0.4, 0.4) });
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
