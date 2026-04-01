@@ -101,7 +101,7 @@ export async function POST(req: Request) {
         questionsWithAnswers
       );
 
-      // ✅ FIX: Convert Uint8Array to Buffer before saving to Prisma Bytes field
+      // Convert to Buffer for Prisma Bytes field
       const pdfBuffer = Buffer.from(pdfBytes);
 
       await prisma.test.update({
@@ -109,26 +109,31 @@ export async function POST(req: Request) {
         data: { pdfReport: pdfBuffer },
       });
 
-      await transporter.sendMail({
-        from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
-        to: latestTest.user?.email,
-        subject: "Your Premium IQBase Report is Ready! 🎉",
-        html: `
-          <h2>Congratulations on unlocking Premium!</h2>
-          <p>Hi ${latestTest.user?.name || "there"},</p>
-          <p>Your detailed PDF report is attached.</p>
-          <p>Thank you for choosing Premium!</p>
-        `,
-        attachments: [
-          {
-            filename: `IQBase-Premium-Report-${latestTest.id}.pdf`,
-            content: pdfBuffer,
-            contentType: "application/pdf",
-          },
-        ],
-      });
+      // Send email ONLY if we have a valid email address
+      if (latestTest.user?.email) {
+        await transporter.sendMail({
+          from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
+          to: latestTest.user.email,
+          subject: "Your Premium IQBase Report is Ready! 🎉",
+          html: `
+            <h2>Congratulations on unlocking Premium!</h2>
+            <p>Hi ${latestTest.user.name || "there"},</p>
+            <p>Your detailed PDF report is attached.</p>
+            <p>Thank you for choosing Premium!</p>
+          `,
+          attachments: [
+            {
+              filename: `IQBase-Premium-Report-${latestTest.id}.pdf`,
+              content: pdfBuffer,
+              contentType: "application/pdf",
+            },
+          ],
+        });
 
-      console.log(`✅ Premium PDF saved and emailed to ${latestTest.user?.email}`);
+        console.log(`✅ Premium PDF saved and emailed to ${latestTest.user.email}`);
+      } else {
+        console.log("⚠️ No email address found for user – PDF saved but not emailed");
+      }
     } catch (error: any) {
       console.error("Error in webhook PDF generation/email:", error);
     }
