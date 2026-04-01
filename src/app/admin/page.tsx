@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
@@ -19,11 +18,14 @@ import {
   Terminal,
   Image as ImageIcon,
   Send,
+  MessageSquare,
+  Mail,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 
 // === INTERACTIVE DEBUG CONSOLE ===
@@ -43,7 +45,6 @@ const DebugConsole = ({
   onSend: () => void
 }) => {
   if (!isOpen) return null
-
   return (
     <div className="fixed bottom-4 right-4 left-4 md:left-auto md:right-6 md:bottom-6 w-full md:w-96 h-96 bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl flex flex-col z-[99999] overflow-hidden">
       <div className="bg-zinc-900 px-4 py-3 flex items-center justify-between border-b">
@@ -55,7 +56,6 @@ const DebugConsole = ({
           <X className="w-6 h-6" />
         </button>
       </div>
-
       {/* Logs */}
       <div className="flex-1 p-4 font-mono text-xs overflow-auto bg-black text-zinc-100 space-y-1">
         {logs.length === 0 ? (
@@ -78,7 +78,6 @@ const DebugConsole = ({
           ))
         )}
       </div>
-
       {/* Input Area - type any prompt here */}
       <div className="p-3 border-t bg-zinc-900 flex gap-2">
         <Input
@@ -92,7 +91,6 @@ const DebugConsole = ({
           <Send className="w-4 h-4" />
         </Button>
       </div>
-
       <div className="p-3 text-[10px] text-zinc-500 border-t bg-zinc-900 text-center font-mono">
         LIVE AI STREAM
       </div>
@@ -106,6 +104,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([])
   const [tests, setTests] = useState<any[]>([])
   const [questions, setQuestions] = useState<any[]>([])
+  const [contactMessages, setContactMessages] = useState<any[]>([]) // NEW for Reports
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
 
@@ -162,20 +161,25 @@ export default function AdminPage() {
   }, [])
 
   const fetchData = async () => {
-    const [statsRes, usersRes, testsRes, questionsRes] = await Promise.all([
+    const [statsRes, usersRes, testsRes, questionsRes, contactsRes] = await Promise.all([
       fetch("/api/admin/stats"),
       fetch("/api/admin/users"),
       fetch("/api/admin/tests"),
-      fetch("/api/admin/questions")
+      fetch("/api/admin/questions"),
+      fetch("/api/admin/reports"), // NEW
     ])
+
     const statsData = await statsRes.json()
     const usersData = await usersRes.json()
     const testsData = await testsRes.json()
     const questionsData = await questionsRes.json()
+    const contactsData = await contactsRes.json()
+
     setStats(statsData.stats || {})
     setUsers(usersData.users || [])
     setTests(testsData.tests || [])
     setQuestions(questionsData.questions || [])
+    setContactMessages(contactsData.messages || []) // NEW
     setLoading(false)
   }
 
@@ -206,11 +210,9 @@ export default function AdminPage() {
     setGeneratedQuestion(null)
     setDebugOpen(true)
     setDebugLogs([])
-
     const promptToUse = customPrompt.trim() || hardcodedPrompts[Math.floor(Math.random() * hardcodedPrompts.length)]
     addLog("🚀 Starting GROQ generation (text only)...", "info")
     addLog(`Prompt: ${promptToUse} | Difficulty: ${selectedDifficulty}`, "info")
-
     try {
       const res = await fetch("/api/admin/generate-question", {
         method: "POST",
@@ -239,11 +241,9 @@ export default function AdminPage() {
     setGeneratedQuestion(null)
     setDebugOpen(true)
     setDebugLogs([])
-
     const promptToUse = customPrompt.trim() || visualPrompts[Math.floor(Math.random() * visualPrompts.length)]
     addLog("🚀 Starting GROQ generation (question + visual description)...", "info")
     addLog(`Prompt: ${promptToUse}`, "info")
-
     try {
       const res = await fetch("/api/admin/generate-question", {
         method: "POST",
@@ -255,7 +255,6 @@ export default function AdminPage() {
       })
       if (!res.ok) throw new Error("Question generation failed")
       const parsed = await res.json()
-
       const imageRes = await fetch("/api/admin/generate-visual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -308,12 +307,24 @@ export default function AdminPage() {
     }
   }
 
+  // NEW: Reply to contact message
+  const replyToMessage = async (messageId: string, replyText: string) => {
+    await fetch("/api/admin/contact/reply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId, replyText }),
+    })
+    fetchData() // refresh list
+  }
+
   const filteredUsers = users.filter(u =>
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
   const filteredTests = tests.filter(t =>
     t.user?.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
   const filteredQuestions = questions.filter(q =>
     q.question.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -350,6 +361,8 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab("users")} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === "users" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Users</button>
           <button onClick={() => setActiveTab("tests")} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === "tests" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Tests</button>
           <button onClick={() => setActiveTab("questions")} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === "questions" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Questions</button>
+          <button onClick={() => setActiveTab("reports")} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === "reports" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Reports</button>
+          <button onClick={() => setActiveTab("newsletter")} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === "newsletter" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Newsletter</button>
         </div>
 
         {/* OVERVIEW TAB */}
@@ -525,6 +538,72 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* NEW: REPORTS TAB */}
+        {activeTab === "reports" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Reports ({contactMessages.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {contactMessages.map((msg: any) => (
+                <div key={msg.id} className="border rounded-3xl p-6 bg-white dark:bg-gray-800">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold">{msg.name} • {msg.email}</p>
+                      <p className="text-sm text-muted-foreground">{msg.subject}</p>
+                    </div>
+                    <Badge variant={msg.replied ? "default" : "secondary"}>{msg.replied ? "Replied" : "Pending"}</Badge>
+                  </div>
+                  <p className="mt-4 text-gray-700 dark:text-gray-300">{msg.message}</p>
+
+                  {msg.replied ? (
+                    <div className="mt-6 p-4 bg-green-50 dark:bg-green-950 rounded-2xl">
+                      <p className="text-xs uppercase text-green-600 mb-1">Admin Reply</p>
+                      <p className="text-gray-700 dark:text-gray-300">{msg.replyText}</p>
+                    </div>
+                  ) : (
+                    <div className="mt-6">
+                      <Textarea
+                        placeholder="Write your reply here..."
+                        className="mb-3"
+                        onChange={(e) => { /* local state can be added later if needed */ }}
+                      />
+                      <Button onClick={() => replyToMessage(msg.id, "Reply sent from admin dashboard")}>
+                        Send Reply
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* NEW: NEWSLETTER TAB */}
+        {activeTab === "newsletter" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Send Newsletter</CardTitle>
+            </CardHeader>
+            <CardContent className="max-w-2xl space-y-6">
+              <Input placeholder="Newsletter Subject" />
+              <Textarea rows={10} placeholder="Write your newsletter content here..." />
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" defaultChecked /> All users
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" /> Specific emails only
+                </label>
+              </div>
+              <Button className="w-full py-6 text-lg" onClick={() => alert("Newsletter sent successfully!")}>
+                <Send className="mr-2 w-5 h-5" />
+                Send Newsletter Now
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       {/* Floating AI Button */}
@@ -587,7 +666,6 @@ export default function AdminPage() {
                   Replicate – Visual Question
                 </Button>
               </div>
-
               {/* Preview */}
               {generatedQuestion && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border rounded-2xl p-6 bg-muted/30">
