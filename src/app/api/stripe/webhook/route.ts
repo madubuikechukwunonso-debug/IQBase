@@ -38,6 +38,7 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId;
     const testId = session.metadata?.testId;
+    const tier = session.metadata?.tier;   // ← "basic" or "premium"
 
     if (!userId || !testId) {
       console.error("Missing userId or testId in metadata");
@@ -58,84 +59,84 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
-        cache: "no-store",
-      });
-      const questionsData = await questionsRes.json();
-      const allQuestions = questionsData.questions || [];
+      // ==================== ONLY RUN PREMIUM LOGIC IF TIER IS PREMIUM ====================
+      if (tier === "premium") {
+        const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
+          cache: "no-store",
+        });
+        const questionsData = await questionsRes.json();
+        const allQuestions = questionsData.questions || [];
 
-      const questionsWithAnswers = allQuestions.map((q: any) => {
-        const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
-        return {
-          ...q,
-          userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
-        };
-      });
-
-      const testResultForPDF = {
-        ...latestTest,
-        score: latestTest.score ?? 0,
-        percentile: latestTest.percentile ?? 50,
-        category: latestTest.category ?? "General",
-        categoryDescription: latestTest.category || "General IQ Assessment",
-        categoryColor: "#8b5cf6",
-        categoryScores: {
-          logical: latestTest.logicalScore ?? 0,
-          pattern: latestTest.patternScore ?? 0,
-          numerical: latestTest.numericalScore ?? 0,
-          speed: latestTest.speedScore ?? 0,
-        },
-        strengths: ["Strong analytical thinking", "Good pattern recognition"],
-        weaknesses: ["Room for improvement in speed"],
-        recommendations: [
-          "Practice more numerical reasoning questions",
-          "Focus on timed pattern recognition drills",
-          "Review logical syllogisms for better accuracy"
-        ],
-      };
-
-      const pdfBytes = await generatePremiumPDF(
-        testResultForPDF,
-        latestTest.user?.name || "Premium User",
-        latestTest.id,
-        questionsWithAnswers
-      );
-
-      // Convert to Buffer for Prisma Bytes field
-      const pdfBuffer = Buffer.from(pdfBytes);
-
-      await prisma.test.update({
-        where: { id: testId },
-        data: { pdfReport: pdfBuffer },
-      });
-
-      // Send email ONLY if we have a valid email address
-      if (latestTest.user?.email) {
-        await transporter.sendMail({
-          from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
-          to: latestTest.user.email,
-          subject: "Your Premium IQBase Report is Ready! 🎉",
-          html: `
-            <h2>Congratulations on unlocking Premium!</h2>
-            <p>Hi ${latestTest.user.name || "there"},</p>
-            <p>Your detailed PDF report is attached.</p>
-            <p>Thank you for choosing Premium!</p>
-          `,
-          attachments: [
-            {
-              filename: `IQBase-Premium-Report-${latestTest.id}.pdf`,
-              content: pdfBuffer,
-              contentType: "application/pdf",
-            },
-          ],
+        const questionsWithAnswers = allQuestions.map((q: any) => {
+          const userAnswerRecord = latestTest.answers?.find((a: any) => a.questionId === q.id);
+          return {
+            ...q,
+            userAnswer: userAnswerRecord ? userAnswerRecord.selectedAnswer : null,
+          };
         });
 
-        console.log(`✅ Premium PDF saved and emailed to ${latestTest.user.email}`);
-      } else {
-        console.log("⚠️ No email address found for user – PDF saved but not emailed");
+        const testResultForPDF = {
+          ...latestTest,
+          score: latestTest.score ?? 0,
+          percentile: latestTest.percentile ?? 50,
+          category: latestTest.category ?? "General",
+          categoryDescription: latestTest.category || "General IQ Assessment",
+          categoryColor: "#8b5cf6",
+          categoryScores: {
+            logical: latestTest.logicalScore ?? 0,
+            pattern: latestTest.patternScore ?? 0,
+            numerical: latestTest.numericalScore ?? 0,
+            speed: latestTest.speedScore ?? 0,
+          },
+          strengths: ["Strong analytical thinking", "Good pattern recognition"],
+          weaknesses: ["Room for improvement in speed"],
+          recommendations: [
+            "Practice more numerical reasoning questions",
+            "Focus on timed pattern recognition drills",
+            "Review logical syllogisms for better accuracy"
+          ],
+        };
+
+        const pdfBytes = await generatePremiumPDF(
+          testResultForPDF,
+          latestTest.user?.name || "Premium User",
+          latestTest.id,
+          questionsWithAnswers
+        );
+
+        const pdfBuffer = Buffer.from(pdfBytes);
+
+        await prisma.test.update({
+          where: { id: testId },
+          data: { pdfReport: pdfBuffer },
+        });
+
+        if (latestTest.user?.email) {
+          await transporter.sendMail({
+            from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
+            to: latestTest.user.email,
+            subject: "Your Premium IQBase Report is Ready! 🎉",
+            html: `
+              <h2>Congratulations on unlocking Premium!</h2>
+              <p>Hi ${latestTest.user.name || "there"},</p>
+              <p>Your detailed PDF report is attached.</p>
+              <p>Thank you for choosing Premium!</p>
+            `,
+            attachments: [
+              {
+                filename: `IQBase-Premium-Report-${latestTest.id}.pdf`,
+                content: pdfBuffer,
+                contentType: "application/pdf",
+              },
+            ],
+          });
+        }
       }
+
+      // For Basic plan we do nothing extra – just mark payment as completed
+      console.log(`✅ Checkout completed for tier: ${tier || "unknown"}`);
     } catch (error: any) {
-      console.error("Error in webhook PDF generation/email:", error);
+      console.error("Error in webhook:", error);
     }
   }
 
