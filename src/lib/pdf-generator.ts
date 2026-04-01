@@ -7,7 +7,7 @@ interface QuestionWithAnswer {
   options: string[];
   correctAnswer: number;
   explanation: string;
-  userAnswer: number | null; // index of user's choice (-1 = timed out)
+  userAnswer: number | null;
   imageUrl?: string | null;
 }
 
@@ -31,7 +31,7 @@ export async function generatePremiumPDF(
     y,
     size: 48,
     font: helveticaBold,
-    color: rgb(0.55, 0.2, 0.9), // brand purple
+    color: rgb(0.55, 0.2, 0.9),
   });
   y -= 55;
 
@@ -44,7 +44,6 @@ export async function generatePremiumPDF(
   });
   y -= 50;
 
-  // User info
   page.drawText(`Name: ${userName}`, { x: 50, y, size: 13, font: helvetica });
   y -= 22;
   page.drawText(`Test ID: ${testId}`, { x: 50, y, size: 11, font: helvetica, color: rgb(0.4, 0.4, 0.4) });
@@ -94,18 +93,18 @@ export async function generatePremiumPDF(
     font: helveticaBold,
     color: rgb(0.1, 0.1, 0.1),
   });
-  y -= 40;
+  y -= 45; // ← Increased spacing
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
 
-    // Create new page if we're near the bottom
-    if (y < 120) {
+    // New page if needed
+    if (y < 150) {
       page = pdfDoc.addPage([595, 842]);
       y = 750;
     }
 
-    // Question number + text
+    // Question
     const questionText = `Q${i + 1}. ${q.question}`;
     page.drawText(questionText, {
       x: 50,
@@ -116,9 +115,9 @@ export async function generatePremiumPDF(
       maxWidth: 495,
       lineHeight: 14,
     });
-    y -= 45;
+    y -= 55; // ← Much more space after question
 
-    // User's answer (red if wrong)
+    // User's answer (red)
     const userOpt = q.userAnswer !== null && q.userAnswer >= 0
       ? q.options[q.userAnswer]
       : "No answer (timed out)";
@@ -129,7 +128,7 @@ export async function generatePremiumPDF(
       font: helvetica,
       color: rgb(0.8, 0.2, 0.2),
     });
-    y -= 20;
+    y -= 25;
 
     // Correct answer (green)
     const correctOpt = q.options[q.correctAnswer];
@@ -140,9 +139,9 @@ export async function generatePremiumPDF(
       font: helvetica,
       color: rgb(0.1, 0.6, 0.1),
     });
-    y -= 20;
+    y -= 25;
 
-    // Explanation
+    // Explanation (more space)
     page.drawText(q.explanation, {
       x: 70,
       y,
@@ -152,7 +151,7 @@ export async function generatePremiumPDF(
       maxWidth: 460,
       lineHeight: 13,
     });
-    y -= 65;
+    y -= 80; // ← Generous spacing after explanation
   }
 
   // === FOOTER ===
