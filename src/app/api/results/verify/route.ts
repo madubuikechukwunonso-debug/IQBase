@@ -27,12 +27,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Test result not found' }, { status: 404 })
       }
 
-      // Convert Buffer to base64 for JSON response
-      if (test.pdfReport) {
-        test.pdfReport = (test.pdfReport as Buffer).toString('base64')
+      // ✅ Create clean response object (do NOT mutate Prisma result)
+      const responseTest = {
+        ...test,
+        pdfReport: test.pdfReport
+          ? (test.pdfReport as Buffer).toString('base64')
+          : null,
       }
 
-      return NextResponse.json({ test })
+      return NextResponse.json({ test: responseTest })
     }
 
     // 2. Dashboard / past test flow (testId)
@@ -49,12 +52,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Test result not found' }, { status: 404 })
       }
 
-      // Convert Buffer to base64 for JSON response
-      if (test.pdfReport) {
-        test.pdfReport = (test.pdfReport as Buffer).toString('base64')
+      // ✅ Create clean response object (do NOT mutate Prisma result)
+      const responseTest = {
+        ...test,
+        pdfReport: test.pdfReport
+          ? (test.pdfReport as Buffer).toString('base64')
+          : null,
       }
 
-      return NextResponse.json({ test })
+      return NextResponse.json({ test: responseTest })
     }
 
     return NextResponse.json({ error: 'No session ID or test ID found' }, { status: 400 })
