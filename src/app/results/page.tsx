@@ -1,5 +1,4 @@
 "use client"
-
 import { Suspense, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
@@ -24,7 +23,6 @@ function ResultsContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
   const testId = searchParams.get("testId")
-
   const [testResult, setTestResult] = useState<any>(null)
   const [allTests, setAllTests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,18 +38,16 @@ function ResultsContent() {
 
     const loadData = async () => {
       try {
-        // Case 1 & 2: Single test view
+        // Case 1 & 2: Single test view (after payment or from dashboard)
         if (sessionId || testId) {
           const param = sessionId ? `session_id=${sessionId}` : `testId=${testId}`
           const res = await fetch(`/api/results/verify?${param}`)
           const data = await res.json()
-
           if (!res.ok) throw new Error(data.error || "Failed to load results")
-
           setTestResult(data.test)
           setIsListView(false)
-        } 
-        // Case 3: View All Results (no ID provided)
+        }
+        // Case 3: View All Results
         else {
           const res = await fetch('/api/tests')
           const data = await res.json()
@@ -65,17 +61,37 @@ function ResultsContent() {
         setLoading(false)
       }
     }
-
     loadData()
   }, [session, status, sessionId, testId])
 
-  const handleDownloadPDF = (pdfBuffer: any) => {
-    if (!pdfBuffer) return
-    const blob = new Blob([pdfBuffer], { type: "application/pdf" })
+  // ✅ FIXED DOWNLOAD FUNCTION – now correctly handles base64 from the API
+  const handleDownloadPDF = (pdfData: any) => {
+    if (!pdfData) {
+      alert("No PDF available")
+      return
+    }
+
+    let arrayBuffer: ArrayBuffer
+
+    // The API now returns base64 string
+    if (typeof pdfData === "string") {
+      const binaryString = atob(pdfData)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+      arrayBuffer = bytes.buffer
+    } 
+    // Fallback for any future raw buffer
+    else {
+      arrayBuffer = pdfData
+    }
+
+    const blob = new Blob([arrayBuffer], { type: "application/pdf" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `IQBase-Report.pdf`
+    a.download = `IQBase-Premium-Report.pdf`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -103,13 +119,12 @@ function ResultsContent() {
     )
   }
 
-  // LIST VIEW – View All Results
+  // LIST VIEW
   if (isListView) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted py-12">
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-8 text-center">All Test Results</h1>
-
           {allTests.length === 0 ? (
             <Card className="text-center py-12">
               <p className="text-muted-foreground">No tests found yet.</p>
@@ -143,7 +158,6 @@ function ResultsContent() {
               ))}
             </div>
           )}
-
           <div className="mt-8 text-center">
             <Link href="/dashboard">
               <Button variant="outline">Back to Dashboard</Button>
@@ -154,7 +168,7 @@ function ResultsContent() {
     )
   }
 
-  // SINGLE TEST VIEW (View Details or after payment)
+  // SINGLE TEST VIEW
   const isPremium = !!testResult.pdfReport
 
   return (
@@ -198,7 +212,11 @@ function ResultsContent() {
 
         {isPremium ? (
           <>
-            <Button onClick={() => handleDownloadPDF(testResult.pdfReport)} size="lg" className="w-full mb-4 text-lg py-7">
+            <Button 
+              onClick={() => handleDownloadPDF(testResult.pdfReport)} 
+              size="lg" 
+              className="w-full mb-4 text-lg py-7"
+            >
               <FileText className="mr-3 w-6 h-6" />
               Download Full Premium PDF Report
             </Button>
@@ -236,5 +254,4 @@ export default function ResultsPage() {
     </Suspense>
   )
 }
-
 export const dynamic = "force-dynamic"
