@@ -9,19 +9,20 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  email         String?   @unique   // ← CHANGED: now optional for Twitter/X
+  email         String?   @unique // ← CHANGED: now optional for Twitter/X
   name          String?
   hashedPassword String?
   emailVerified DateTime?
-  image         String?               // ← Already present for Google/X profile pictures
+  image         String?   // ← Already present for Google/X profile pictures
   role          UserRole  @default(USER)
   blocked       Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  tests         Test[]
-  payments      Payment[]
+
+  accounts Account[]
+  sessions Session[]
+  tests    Test[]
+  payments Payment[]
 }
 
 enum UserRole {
@@ -30,19 +31,21 @@ enum UserRole {
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
@@ -51,7 +54,8 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -59,28 +63,30 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
   hashedPassword String?
+
   @@unique([identifier, token])
 }
 
 model Test {
-  id               String       @id @default(cuid())
-  userId           String?
-  user             User?        @relation(fields: [userId], references: [id])
-  score            Int?
-  percentile       Int?
-  category         String?
-  answers          Answer[]
-  startedAt        DateTime     @default(now())
-  completedAt      DateTime?
-  status           TestStatus   @default(IN_PROGRESS)
-  logicalScore     Int?
-  patternScore     Int?
-  numericalScore   Int?
-  speedScore       Int?
-  pdfReport        Bytes?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  payments         Payment[]
+  id              String     @id @default(cuid())
+  userId          String?
+  user            User?      @relation(fields: [userId], references: [id])
+  score           Int?
+  percentile      Int?
+  category        String?
+  answers         Answer[]
+  startedAt       DateTime   @default(now())
+  completedAt     DateTime?
+  status          TestStatus @default(IN_PROGRESS)
+  logicalScore    Int?
+  patternScore    Int?
+  numericalScore  Int?
+  speedScore      Int?
+  pdfReport       Bytes?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  payments Payment[]
 }
 
 model Answer {
@@ -97,18 +103,18 @@ model Answer {
 }
 
 model Payment {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   userId         String?
-  user           User?         @relation(fields: [userId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id])
   testId         String?
-  test           Test?         @relation(fields: [testId], references: [id])
-  stripePaymentId String       @unique
+  test           Test?        @relation(fields: [testId], references: [id])
+  stripePaymentId String      @unique
   amount         Int
-  currency       String        @default("usd")
+  currency       String       @default("usd")
   tier           PaymentTier
   status         PaymentStatus @default(PENDING)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Question {
@@ -124,6 +130,24 @@ model Question {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model ContactMessage {
+  id          String    @id @default(cuid())
+  name        String
+  email       String
+  subject     String
+  message     String
+  replied     Boolean   @default(false)
+  replyText   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Optional link to user if they were logged in
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("contact_messages")
 }
 
 enum TestStatus {
