@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import Link from "next/link";
 import { Brain } from "lucide-react";
@@ -11,7 +10,6 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
-
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -22,29 +20,24 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     // Client-side validation
     if (!formData.email || !formData.password || !formData.confirmPassword) {
       setStatus("error");
       setMessage("Please fill in all fields");
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setStatus("error");
       setMessage("Passwords do not match");
       return;
     }
-
     if (formData.password.length < 8) {
       setStatus("error");
       setMessage("Password must be at least 8 characters long");
       return;
     }
-
     setStatus("loading");
     setMessage("");
-
     try {
       const res = await fetch("/api/auth/register-magic", {
         method: "POST",
@@ -54,9 +47,7 @@ export default function RegisterPage() {
           password: formData.password,
         }),
       });
-
       const data = await res.json();
-
       if (res.ok) {
         setStatus("success");
         setMessage("✅ Magic link sent! Check your email to create your account.");
@@ -86,12 +77,10 @@ export default function RegisterPage() {
               </span>
             </div>
           </div>
-
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
             Check your email!
           </h2>
           <p className="text-gray-600 dark:text-gray-400 text-lg">{message}</p>
-
           <Link
             href="/login"
             className="mt-10 inline-block text-violet-600 dark:text-violet-400 hover:underline font-medium"
@@ -117,7 +106,6 @@ export default function RegisterPage() {
             </span>
           </div>
         </div>
-
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             Create your account
@@ -132,7 +120,6 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
-
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="sr-only">
@@ -150,7 +137,6 @@ export default function RegisterPage() {
               placeholder="your@email.com"
             />
           </div>
-
           <div>
             <label htmlFor="password" className="sr-only">
               Password
@@ -167,7 +153,6 @@ export default function RegisterPage() {
               placeholder="Create a password"
             />
           </div>
-
           <div>
             <label htmlFor="confirmPassword" className="sr-only">
               Confirm Password
@@ -184,13 +169,11 @@ export default function RegisterPage() {
               placeholder="Re-enter password"
             />
           </div>
-
           {status === "error" && (
             <div className="text-red-600 dark:text-red-400 text-sm text-center bg-red-50 dark:bg-red-900/30 p-3 rounded-2xl">
               {message}
             </div>
           )}
-
           <button
             type="submit"
             disabled={status === "loading"}
@@ -216,8 +199,7 @@ export default function RegisterPage() {
               </span>
             </div>
           </div>
-
-          <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-1 gap-3">
             <button
               type="button"
               onClick={() => signIn("google", { callbackUrl: "/" })}
@@ -231,32 +213,6 @@ export default function RegisterPage() {
                   <path fill="#EA4335" d="M12 5.48c1.65 0 3.13.57 4.3 1.68l3.2-3.2C17.46 2.09 14.94 1 12 1 7.7 1 3.85 3.85 2.04 7.9l2.62 2.53C5.55 7.47 8.5 5.48 12 5.48z"/>
                 </svg>
                 Gmail
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => signIn("facebook", { callbackUrl: "/" })}
-              className="w-full inline-flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              <span className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
-                </svg>
-                Facebook
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => signIn("twitter", { callbackUrl: "/" })}
-              className="w-full inline-flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              <span className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black dark:text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.056l-5.512-7.207-6.304 7.207H1.32l8.588-9.81L0 1.153h7.265l4.99 6.6L18.901 1.153zM19.13 20.78h2.04L7.26 3.22H5.1l14.03 17.56z"/>
-                </svg>
-                X
               </span>
             </button>
           </div>
