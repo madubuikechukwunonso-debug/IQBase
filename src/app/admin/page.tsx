@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 
 // === INTERACTIVE DEBUG CONSOLE ===
@@ -107,14 +106,12 @@ export default function AdminPage() {
   const [contactMessages, setContactMessages] = useState<any[]>([]) // NEW for Reports
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
-
   // AI Modal
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generatedQuestion, setGeneratedQuestion] = useState<any>(null)
   const [lastType, setLastType] = useState<"text" | "visual" | null>(null)
   const [selectedDifficulty, setSelectedDifficulty] = useState(3)
-
   const hardcodedPrompts = [
     "Create a challenging logical reasoning question about conditional statements and syllogisms.",
     "Create a pattern recognition question with numbers or shapes that requires deep observation.",
@@ -124,7 +121,6 @@ export default function AdminPage() {
     "Create a numerical word problem that requires careful calculation.",
     "Create a logical analogy or relationship question.",
   ]
-
   const visualPrompts = [
     "Create a visual analogy or figure completion question using cultural or historical symbols.",
     "Create a spatial reasoning question with famous architecture or historical landmarks.",
@@ -147,19 +143,15 @@ export default function AdminPage() {
     "Create a visual puzzle based on famous literary or theatrical scenes.",
     "Create a figure completion question using medieval knights or samurai armor.",
   ]
-
   const [debugOpen, setDebugOpen] = useState(false)
   const [debugLogs, setDebugLogs] = useState<{ id: number; text: string; type: "info" | "error" | "success" }[]>([])
   const [customPrompt, setCustomPrompt] = useState("")
-
   const addLog = (text: string, type: "info" | "error" | "success" = "info") => {
     setDebugLogs((prev) => [...prev, { id: Date.now(), text, type }])
   }
-
   useEffect(() => {
     fetchData()
   }, [])
-
   const fetchData = async () => {
     const [statsRes, usersRes, testsRes, questionsRes, contactsRes] = await Promise.all([
       fetch("/api/admin/stats"),
@@ -168,13 +160,11 @@ export default function AdminPage() {
       fetch("/api/admin/questions"),
       fetch("/api/admin/reports"), // NEW
     ])
-
     const statsData = await statsRes.json()
     const usersData = await usersRes.json()
     const testsData = await testsRes.json()
     const questionsData = await questionsRes.json()
     const contactsData = await contactsRes.json()
-
     setStats(statsData.stats || {})
     setUsers(usersData.users || [])
     setTests(testsData.tests || [])
@@ -182,7 +172,6 @@ export default function AdminPage() {
     setContactMessages(contactsData.messages || []) // NEW
     setLoading(false)
   }
-
   const blockUser = async (userId: string, blocked: boolean) => {
     await fetch(`/api/admin/users/${userId}/block`, {
       method: "POST",
@@ -191,19 +180,16 @@ export default function AdminPage() {
     })
     fetchData()
   }
-
   const deleteTest = async (testId: string) => {
     if (!confirm("Delete this test permanently?")) return
     await fetch(`/api/admin/tests/${testId}`, { method: "DELETE" })
     fetchData()
   }
-
   const deleteQuestion = async (questionId: string) => {
     if (!confirm("Delete this question permanently?")) return
     await fetch(`/api/admin/questions/${questionId}`, { method: "DELETE" })
     fetchData()
   }
-
   // === GROQ - Text Only (no image) ===
   const generateRandomQuestion = async () => {
     setGenerating(true)
@@ -234,7 +220,6 @@ export default function AdminPage() {
       setGenerating(false)
     }
   }
-
   // === REPLICATE - Visual Question ===
   const generateVisualQuestion = async () => {
     setGenerating(true)
@@ -275,7 +260,6 @@ export default function AdminPage() {
       setGenerating(false)
     }
   }
-
   const handleCancel = () => {
     setGeneratedQuestion(null)
     if (lastType === "text") {
@@ -284,7 +268,6 @@ export default function AdminPage() {
       generateVisualQuestion()
     }
   }
-
   const saveGeneratedQuestion = async () => {
     if (!generatedQuestion) return
     try {
@@ -306,7 +289,6 @@ export default function AdminPage() {
       alert("Save failed")
     }
   }
-
   // NEW: Reply to contact message
   const replyToMessage = async (messageId: string, replyText: string) => {
     await fetch("/api/admin/contact/reply", {
@@ -316,19 +298,15 @@ export default function AdminPage() {
     })
     fetchData() // refresh list
   }
-
   const filteredUsers = users.filter(u =>
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
-
   const filteredTests = tests.filter(t =>
     t.user?.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
-
   const filteredQuestions = questions.filter(q =>
     q.question.toLowerCase().includes(searchQuery.toLowerCase())
   )
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -339,7 +317,6 @@ export default function AdminPage() {
       </div>
     )
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
       <header className="border-b border-border bg-background/80 backdrop-blur-lg sticky top-0 z-50">
@@ -353,7 +330,6 @@ export default function AdminPage() {
           <Badge variant="outline">Admin Dashboard</Badge>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         {/* Scrollable tabs on mobile */}
         <div className="flex border-b mb-6 overflow-x-auto pb-1 gap-1">
@@ -364,7 +340,6 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab("reports")} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === "reports" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Reports</button>
           <button onClick={() => setActiveTab("newsletter")} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === "newsletter" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>Newsletter</button>
         </div>
-
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -414,7 +389,6 @@ export default function AdminPage() {
             </Card>
           </div>
         )}
-
         {/* USERS TAB */}
         {activeTab === "users" && (
           <Card>
@@ -456,7 +430,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
-
         {/* TESTS TAB */}
         {activeTab === "tests" && (
           <Card>
@@ -492,7 +465,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
-
         {/* QUESTIONS TAB */}
         {activeTab === "questions" && (
           <Card>
@@ -538,7 +510,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
-
         {/* NEW: REPORTS TAB */}
         {activeTab === "reports" && (
           <Card>
@@ -556,7 +527,6 @@ export default function AdminPage() {
                     <Badge variant={msg.replied ? "default" : "secondary"}>{msg.replied ? "Replied" : "Pending"}</Badge>
                   </div>
                   <p className="mt-4 text-gray-700 dark:text-gray-300">{msg.message}</p>
-
                   {msg.replied ? (
                     <div className="mt-6 p-4 bg-green-50 dark:bg-green-950 rounded-2xl">
                       <p className="text-xs uppercase text-green-600 mb-1">Admin Reply</p>
@@ -564,10 +534,10 @@ export default function AdminPage() {
                     </div>
                   ) : (
                     <div className="mt-6">
-                      <Textarea
+                      {/* Native textarea (no shadcn) */}
+                      <textarea
                         placeholder="Write your reply here..."
-                        className="mb-3"
-                        onChange={(e) => { /* local state can be added later if needed */ }}
+                        className="w-full min-h-[120px] p-4 rounded-2xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-y text-sm"
                       />
                       <Button onClick={() => replyToMessage(msg.id, "Reply sent from admin dashboard")}>
                         Send Reply
@@ -579,7 +549,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
-
         {/* NEW: NEWSLETTER TAB */}
         {activeTab === "newsletter" && (
           <Card>
@@ -588,7 +557,12 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent className="max-w-2xl space-y-6">
               <Input placeholder="Newsletter Subject" />
-              <Textarea rows={10} placeholder="Write your newsletter content here..." />
+              {/* Native textarea (no shadcn) */}
+              <textarea
+                rows={10}
+                placeholder="Write your newsletter content here..."
+                className="w-full p-4 rounded-2xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-y text-sm"
+              />
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" defaultChecked /> All users
@@ -605,7 +579,6 @@ export default function AdminPage() {
           </Card>
         )}
       </main>
-
       {/* Floating AI Button */}
       <button
         onClick={() => setAiModalOpen(true)}
@@ -615,7 +588,6 @@ export default function AdminPage() {
         <Wand2 className="w-5 h-5" />
         <span className="font-medium">Generate Random Question</span>
       </button>
-
       {/* AI Modal */}
       {aiModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4">
@@ -705,7 +677,6 @@ export default function AdminPage() {
           </motion.div>
         </div>
       )}
-
       {/* Interactive Debug Console */}
       <DebugConsole
         isOpen={debugOpen}
