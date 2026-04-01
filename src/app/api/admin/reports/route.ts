@@ -23,6 +23,6 @@ export async function GET() {
     return NextResponse.json({ messages });
   } catch (error) {
     console.error("Reports fetch error:", error);
-    return NextResponse.json({ messages: [] }); // safe empty array
+    return NextResponse.json({ messages: [] }); // always return array
   }
 }
