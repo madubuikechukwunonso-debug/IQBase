@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Brain, Send, ArrowLeft } from "lucide-react"
+import { Brain, Send, ArrowLeft, Loader2 } from "lucide-react"   // ← Loader2 added here
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -121,12 +121,12 @@ export default function ContactPage() {
               <Button type="submit" disabled={loading} className="w-full py-6 text-lg">
                 {loading ? (
                   <>
-                    <Loader2 className="animate-spin mr-2" />
+                    <Loader2 className="animate-spin mr-2 w-5 h-5" />
                     Sending...
                   </>
                 ) : (
                   <>
-                    <Send className="mr-2" />
+                    <Send className="mr-2 w-5 h-5" />
                     Send Message to Admin
                   </>
                 )}
