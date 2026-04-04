@@ -1,5 +1,4 @@
 "use client"
-
 import { motion } from "framer-motion"
 import { Brain, ArrowRight, Sparkles, Users, Trophy, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -16,7 +15,7 @@ export function Hero() {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-blue-500/5 dark:from-primary/10 dark:via-purple-900/20 dark:to-blue-900/20" />
-      
+     
       {/* Floating Orbs */}
       <motion.div
         className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl"
@@ -72,8 +71,8 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
         >
-          <span className="block">Discover Your</span>
-          <span className="gradient-text">Cognitive Potential</span>
+          <span className="block">Take the Ultimate</span>
+          <span className="gradient-text">IQ Test Online</span>
         </motion.h1>
 
         <motion.p
@@ -82,8 +81,7 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
         >
-          Take our comprehensive cognitive assessment inspired by standard psychometric principles. 
-          Unlock insights into your logical reasoning, pattern recognition, and numerical abilities.
+          Challenge your mind with our comprehensive IQ test. Get accurate insights into your logical reasoning, pattern recognition, numerical ability, and cognitive speed in just 15 minutes.
         </motion.p>
 
         <motion.div
@@ -95,7 +93,7 @@ export function Hero() {
           <Link href="/test">
             <Button size="xl" variant="gradient" className="btn-shine group">
               <Brain className="mr-2 h-5 w-5" />
-              Test Your Intelligence Now
+              Start Your IQ Test Now
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
@@ -106,7 +104,7 @@ export function Hero() {
           </Link>
         </motion.div>
 
-        {/* Stats */}
+        {/* Stats - unchanged */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -130,7 +128,7 @@ export function Hero() {
           ))}
         </motion.div>
 
-        {/* Trust Badges */}
+        {/* Trust Badges - unchanged */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -148,7 +146,7 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* Scroll Indicator */}
+      {/* Scroll Indicator - unchanged */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
