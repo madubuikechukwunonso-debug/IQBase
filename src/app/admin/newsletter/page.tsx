@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // or use native textarea if you prefer
 
 export default function NewsletterPage() {
   const [subject, setSubject] = useState("");
@@ -26,7 +25,7 @@ export default function NewsletterPage() {
       const payload = {
         subject,
         content,
-        sendTo: sendTo === "all" ? "all" : { emails: specificEmails.split(",").map(e => e.trim()) },
+        sendTo: sendTo === "all" ? "all" : { emails: specificEmails.split(",").map(e => e.trim()).filter(Boolean) },
       };
 
       const res = await fetch("/api/admin/newsletter", {
@@ -41,6 +40,7 @@ export default function NewsletterPage() {
         setMessage(`✅ Newsletter sent to ${data.sentCount || "multiple"} recipients!`);
         setSubject("");
         setContent("");
+        setSpecificEmails("");
       } else {
         setMessage(data.error || "Failed to send newsletter");
       }
@@ -64,11 +64,12 @@ export default function NewsletterPage() {
             onChange={(e) => setSubject(e.target.value)}
           />
 
-          <Textarea
+          <textarea
             rows={12}
             placeholder="Write your newsletter content here... (HTML supported)"
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            className="w-full p-4 rounded-2xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-y text-sm"
           />
 
           <div className="flex gap-6">
@@ -99,7 +100,7 @@ export default function NewsletterPage() {
           )}
 
           {message && (
-            <div className={`p-4 rounded-2xl ${message.includes("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+            <div className={`p-4 rounded-2xl ${message.includes("✅") ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"}`}>
               {message}
             </div>
           )}
