@@ -1,48 +1,118 @@
 "use client";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // or use native textarea if you prefer
 
 export default function NewsletterPage() {
   const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [toAll, setToAll] = useState(true);
-  const [emails, setEmails] = useState("");
+  const [content, setContent] = useState("");
+  const [sendTo, setSendTo] = useState<"all" | "specific">("all");
+  const [specificEmails, setSpecificEmails] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const sendNewsletter = async () => {
-    await fetch("/api/admin/newsletter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  const handleSend = async () => {
+    if (!subject || !content) {
+      setMessage("Subject and content are required");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const payload = {
         subject,
-        body,
-        toAll,
-        specificEmails: emails.split(",").map(e => e.trim()),
-      }),
-    });
-    alert("Newsletter sent!");
+        content,
+        sendTo: sendTo === "all" ? "all" : { emails: specificEmails.split(",").map(e => e.trim()) },
+      };
+
+      const res = await fetch("/api/admin/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage(`✅ Newsletter sent to ${data.sentCount || "multiple"} recipients!`);
+        setSubject("");
+        setContent("");
+      } else {
+        setMessage(data.error || "Failed to send newsletter");
+      }
+    } catch (err) {
+      setMessage("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-8">Send Newsletter</h1>
-      <div className="max-w-2xl space-y-6">
-        <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Subject" className="w-full px-5 py-4 rounded-3xl border" />
-        <textarea value={body} onChange={e => setBody(e.target.value)} rows={10} placeholder="Newsletter body..." className="w-full px-5 py-4 rounded-3xl border" />
-        
-        <div className="flex gap-4">
-          <label>
-            <input type="radio" checked={toAll} onChange={() => setToAll(true)} /> All users
-          </label>
-          <label>
-            <input type="radio" checked={!toAll} onChange={() => setToAll(false)} /> Specific emails
-          </label>
-        </div>
+    <div className="p-8 max-w-4xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle>Send Newsletter</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Input
+            placeholder="Newsletter Subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+          />
 
-        {!toAll && (
-          <input value={emails} onChange={e => setEmails(e.target.value)} placeholder="email1@example.com, email2@example.com" className="w-full px-5 py-4 rounded-3xl border" />
-        )}
+          <Textarea
+            rows={12}
+            placeholder="Write your newsletter content here... (HTML supported)"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
 
-        <button onClick={sendNewsletter} className="w-full py-4 bg-emerald-600 text-white rounded-3xl">Send Newsletter</button>
-      </div>
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="radio" 
+                checked={sendTo === "all"} 
+                onChange={() => setSendTo("all")} 
+              /> 
+              All users
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="radio" 
+                checked={sendTo === "specific"} 
+                onChange={() => setSendTo("specific")} 
+              /> 
+              Specific emails only
+            </label>
+          </div>
+
+          {sendTo === "specific" && (
+            <Input
+              placeholder="Enter emails separated by commas"
+              value={specificEmails}
+              onChange={(e) => setSpecificEmails(e.target.value)}
+            />
+          )}
+
+          {message && (
+            <div className={`p-4 rounded-2xl ${message.includes("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+              {message}
+            </div>
+          )}
+
+          <Button 
+            onClick={handleSend} 
+            disabled={loading || !subject || !content}
+            className="w-full py-6 text-lg"
+          >
+            {loading ? "Sending..." : "Send Newsletter Now"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
