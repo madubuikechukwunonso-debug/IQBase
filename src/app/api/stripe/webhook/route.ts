@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     console.log(`📦 Checkout completed → tier: "${tier}" | testId: ${testId} | userId: ${userId}`);
 
     if (!userId || !testId) {
-      console.error("Missing userId or testId in metadata");
+      console.error("❌ Missing userId or testId in metadata");
       return NextResponse.json({ received: true });
     }
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       });
 
       if (!latestTest) {
-        console.error("No test found for this payment");
+        console.error("❌ No test found for this payment");
         return NextResponse.json({ received: true });
       }
 
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       if (tier === "premium") {
         console.log("✅ PREMIUM PLAN DETECTED – generating PDF");
 
-        const questionsRes = await fetch(`${process.env.NEXTAUTH_URL}/api/questions`, {
+        const questionsRes = await fetch(`${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/questions`, {
           cache: "no-store",
         });
         const questionsData = await questionsRes.json();
@@ -117,14 +117,16 @@ export async function POST(req: Request) {
 
         const pdfBuffer = Buffer.from(pdfBytes);
 
+        // Save PDF to database
         await prisma.test.update({
           where: { id: testId },
           data: { pdfReport: pdfBuffer },
         });
 
+        // Send email
         if (latestTest.user?.email) {
           await transporter.sendMail({
-            from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
+            from: `"IQBase" <${process.env.EMAIL_FROM || process.env.EMAIL_SERVER_USER}>`,
             to: latestTest.user.email,
             subject: "Your Premium IQBase Report is Ready! 🎉",
             html: `
@@ -141,16 +143,15 @@ export async function POST(req: Request) {
               },
             ],
           });
-          console.log(`✅ Premium PDF emailed to ${latestTest.user.email}`);
+          console.log(`✅ Premium PDF generated and emailed to ${latestTest.user.email}`);
         }
       } 
       // ==================== BASIC LOGIC ====================
       else {
         console.log(`✅ BASIC PLAN DETECTED – no PDF generated`);
-        // You can add any basic-specific logic here in the future
       }
     } catch (error: any) {
-      console.error("Error in webhook:", error);
+      console.error("❌ Error in webhook PDF/email processing:", error);
     }
   }
 
