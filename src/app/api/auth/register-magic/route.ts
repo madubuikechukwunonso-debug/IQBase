@@ -13,6 +13,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
     }
 
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -23,7 +27,6 @@ export async function POST(req: NextRequest) {
     const token = crypto.randomUUID();
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    // Create verification token (stores hashed password temporarily)
     await prisma.verificationToken.create({
       data: {
         identifier: email,
@@ -36,10 +39,11 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const verifyUrl = `${baseUrl}/verify?token=${token}&email=${encodeURIComponent(email)}`;
 
-    // Send magic link email
+    // Nodemailer setup with better error handling
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_SERVER_HOST,
-      port: Number(process.env.EMAIL_SERVER_PORT),
+      port: Number(process.env.EMAIL_SERVER_PORT) || 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_SERVER_USER,
         pass: process.env.EMAIL_SERVER_PASSWORD,
@@ -52,6 +56,7 @@ export async function POST(req: NextRequest) {
       subject: "Complete your IQBase registration",
       html: `
         <h2>Welcome to IQBase 👋</h2>
+        <p>Hi ${name},</p>
         <p>Click the button below to create your account:</p>
         <a href="${verifyUrl}" style="display:inline-block;padding:16px 32px;background:#8b5cf6;color:white;text-decoration:none;border-radius:9999px;font-weight:600;">
           Create My Account
@@ -63,12 +68,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Magic link sent! Check your inbox / spam folder to complete registration.",
+      message: "Magic link sent! Check your email to complete registration.",
     });
   } catch (error: any) {
     console.error("Register magic error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to send magic link" },
+      { error: "Failed to send magic link. Please check your email settings." },
       { status: 500 }
     );
   }
