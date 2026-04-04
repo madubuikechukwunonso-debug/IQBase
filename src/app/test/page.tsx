@@ -35,25 +35,26 @@ export default function TestPage() {
   const [testId, setTestId] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
-  // === AUTH PROTECTION ===
+  // === SESSION PROTECTION ===
   useEffect(() => {
     if (status === "loading") return;
 
     if (!session?.user) {
+      // Redirect to login and return to /test after successful login
       router.push(`/login?callbackUrl=/test`);
       return;
     }
 
+    // User is logged in → load questions
     fetchQuestions();
   }, [session, status, router]);
 
-  // Fetch questions
+  // Fetch questions (now includes imageUrl)
   const fetchQuestions = useCallback(async () => {
     try {
       const res = await fetch("/api/questions");
       const data = await res.json();
       const dbQuestions: Question[] = data.questions || [];
-
       if (dbQuestions.length > 0) {
         const shuffled = shuffleArray(dbQuestions).slice(0, QUESTION_COUNT);
         setQuestions(shuffled);
@@ -139,21 +140,25 @@ export default function TestPage() {
         body: JSON.stringify({ answers: finalAnswers, result: testResult }),
       });
       const data = await res.json();
-      if (data.testId) {
-        setTestId(data.testId);
-      }
+      if (data.testId) setTestId(data.testId);
     } catch (err) {
       console.error('Failed to save test', err);
     }
   };
 
-  // Redirect to pricing ONLY after we have a valid testId
+  // Redirect to pricing after test completion
   useEffect(() => {
     if (testState === 'completed' && result && testId) {
-      router.push(`/pricing?testId=${testId}`);
+      const resultString = encodeURIComponent(JSON.stringify({ id: testId, ...result }));
+      router.push(`/pricing?result=${resultString}`);
     }
   }, [testState, result, testId, router]);
 
+  useEffect(() => {
+    fetchQuestions();
+  }, [fetchQuestions]);
+
+  // LOADING STATE
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -198,10 +203,7 @@ export default function TestPage() {
             <CardTitle>Assessment Complete!</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button disabled className="w-full">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Redirecting to pricing...
-            </Button>
+            <Button disabled>Redirecting to pricing...</Button>
           </CardContent>
         </Card>
       </div>
@@ -211,7 +213,7 @@ export default function TestPage() {
   const currentQuestion = questions[currentIndex];
   if (!currentQuestion) return null;
 
-  // MAIN TEST SCREEN
+  // MAIN TEST SCREEN – IMAGE NOW DISPLAYED
   return (
     <div className="p-4 max-w-3xl mx-auto">
       <div className="mb-4 flex justify-between text-sm">
@@ -221,14 +223,13 @@ export default function TestPage() {
           {timeLeft}s
         </span>
       </div>
-
       <Progress value={(currentIndex / questions.length) * 100} className="mb-6" />
-
       <Card>
         <CardHeader>
           <CardTitle className="text-xl leading-relaxed">{currentQuestion.question}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* IMAGE RENDERING */}
           {currentQuestion.imageUrl && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -243,6 +244,7 @@ export default function TestPage() {
             </motion.div>
           )}
 
+          {/* Answer Options */}
           <div className="space-y-3">
             {currentQuestion.options.map((option, index) => (
               <button
