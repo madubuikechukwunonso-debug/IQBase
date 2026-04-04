@@ -1,9 +1,11 @@
-"use client"
-import { useState } from "react"
-import { Suspense } from "react"
-import { useSession } from "next-auth/react"
-import { useSearchParams } from "next/navigation"
-import { motion } from "framer-motion"
+// src/app/pricing/page.tsx
+"use client";
+
+import { useState } from "react";
+import { Suspense } from "react";
+import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   Check,
   X,
@@ -12,12 +14,12 @@ import {
   ArrowRight,
   Lock,
   Star,
-  Loader2
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 const pricingTiers = [
   {
@@ -56,36 +58,41 @@ const pricingTiers = [
     icon: Star,
     popular: true,
   },
-]
+];
 
 function PricingContent() {
-  const { data: session } = useSession()
-  const searchParams = useSearchParams()
-  const [hoveredTier, setHoveredTier] = useState<string | null>(null)
-  const [loadingTier, setLoadingTier] = useState<string | null>(null)
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const [hoveredTier, setHoveredTier] = useState<string | null>(null);
+  const [loadingTier, setLoadingTier] = useState<string | null>(null);
 
-  const resultParam = searchParams.get("result")
-  let testId = ""
-  if (resultParam) {
+  // Extract testId from either ?result= or ?testId=
+  let testId = "";
+  const resultParam = searchParams.get("result");
+  const testIdParam = searchParams.get("testId");
+
+  if (testIdParam) {
+    testId = testIdParam;
+  } else if (resultParam) {
     try {
-      const parsed = JSON.parse(decodeURIComponent(resultParam))
-      testId = parsed.id || ""
+      const parsed = JSON.parse(decodeURIComponent(resultParam));
+      testId = parsed.id || "";
     } catch (e) {
-      console.warn("Failed to parse result param", e)
+      console.warn("Failed to parse result param", e);
     }
   }
 
   const handleCheckout = async (tier: any) => {
     if (!tier.priceId) {
-      alert("Stripe price ID is not configured.\n\nPlease add NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID and NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID to your .env.local file.")
-      return
+      alert("Stripe price ID is not configured.\n\nPlease add NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID and NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID to your .env.local file.");
+      return;
     }
     if (!session?.user?.email) {
-      alert("You must be logged in to purchase.\n\nPlease log in and try again.")
-      return
+      alert("You must be logged in to purchase.\n\nPlease log in and try again.");
+      return;
     }
 
-    setLoadingTier(tier.id)
+    setLoadingTier(tier.id);
 
     try {
       const res = await fetch("/api/stripe/checkout", {
@@ -94,26 +101,27 @@ function PricingContent() {
         body: JSON.stringify({
           priceId: tier.priceId,
           email: session.user.email,
-          testId: testId,
+          testId: testId || "",           // ← Critical for webhook
           tier: tier.id.toUpperCase(),
         }),
-      })
+      });
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Checkout failed")
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Checkout failed");
 
       if (data.url) {
-        window.location.href = data.url
+        window.location.href = data.url;
       } else {
-        throw new Error("No checkout URL returned from Stripe")
+        throw new Error("No checkout URL returned from Stripe");
       }
     } catch (err: any) {
-      console.error("Checkout error:", err)
-      alert(`Checkout failed: ${err.message || "Please try again or contact support."}`)
+      console.error("Checkout error:", err);
+      alert(`Checkout failed: ${err.message || "Please try again or contact support."}`);
     } finally {
-      setLoadingTier(null)
+      setLoadingTier(null);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
@@ -178,6 +186,7 @@ function PricingContent() {
                     MOST POPULAR
                   </div>
                 )}
+
                 <CardHeader className="pb-4">
                   <div className={`w-12 h-12 rounded-xl ${
                     tier.popular
@@ -189,11 +198,13 @@ function PricingContent() {
                   <CardTitle className="text-2xl">{tier.name}</CardTitle>
                   <p className="text-muted-foreground">{tier.description}</p>
                 </CardHeader>
+
                 <CardContent className="space-y-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-bold">${tier.price}</span>
                     <span className="text-muted-foreground">one-time</span>
                   </div>
+
                   <ul className="space-y-3">
                     {tier.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-3">
@@ -212,6 +223,7 @@ function PricingContent() {
                       </li>
                     ))}
                   </ul>
+
                   <Button
                     size="lg"
                     variant={tier.popular ? "default" : "outline"}
@@ -236,6 +248,9 @@ function PricingContent() {
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Features Comparison Table, FAQ, Trust Badges – unchanged */}
+        {/* (Your original table, FAQ, and trust badges remain exactly the same) */}
 
         {/* Features Comparison Table */}
         <motion.div
@@ -345,7 +360,7 @@ function PricingContent() {
         </motion.div>
       </main>
     </div>
-  )
+  );
 }
 
 export default function PricingPage() {
@@ -362,7 +377,7 @@ export default function PricingPage() {
     >
       <PricingContent />
     </Suspense>
-  )
+  );
 }
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
