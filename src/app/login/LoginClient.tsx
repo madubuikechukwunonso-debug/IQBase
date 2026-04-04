@@ -3,7 +3,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Brain, X } from "lucide-react";
+import { Brain } from "lucide-react";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -12,31 +12,28 @@ export default function LoginClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Forgot password modal states
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotError, setForgotError] = useState<string | null>(null);
-  const [forgotSuccess, setForgotSuccess] = useState(false);
-  const [forgotLoading, setForgotLoading] = useState(false);
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     const form = new FormData(e.currentTarget);
     const email = form.get("email") as string;
     const password = form.get("password") as string;
+
     if (!email || !password) {
       setError("Please fill in both email and password");
       setLoading(false);
       return;
     }
+
     const result = await signIn("credentials", {
       email,
       password,
       redirect: false,
       callbackUrl,
     });
+
     if (result?.error) {
       setError(
         result.error === "CredentialsSignin"
@@ -46,39 +43,13 @@ export default function LoginClient() {
       setLoading(false);
       return;
     }
+
     if (result?.ok) {
       router.refresh();
       router.push(callbackUrl);
     }
     setLoading(false);
   }
-
-  const handleForgotPassword = async () => {
-    if (!forgotEmail.trim()) {
-      setForgotError("Please enter a valid email");
-      return;
-    }
-    setForgotLoading(true);
-    setForgotError(null);
-    setForgotSuccess(false);
-    const result = await signIn("email", {
-      email: forgotEmail.trim(),
-      redirect: false,
-    });
-    setForgotLoading(false);
-    if (result?.ok) {
-      setForgotSuccess(true);
-    } else {
-      setForgotError("Failed to send reset link. Please try again.");
-    }
-  };
-
-  const closeForgotModal = () => {
-    setShowForgotModal(false);
-    setForgotEmail("");
-    setForgotError(null);
-    setForgotSuccess(false);
-  };
 
   const handleSocialSignIn = (provider: string) => {
     setLoading(true);
@@ -95,6 +66,7 @@ export default function LoginClient() {
         </div>
         <span className="font-bold text-3xl tracking-tight">IQBase</span>
       </div>
+
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Sign in to your account
@@ -109,6 +81,7 @@ export default function LoginClient() {
           </Link>
         </p>
       </div>
+
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         <div className="rounded-md shadow-sm -space-y-px">
           <div>
@@ -140,11 +113,13 @@ export default function LoginClient() {
             />
           </div>
         </div>
+
         {error && (
           <div className="text-red-600 dark:text-red-400 text-sm text-center bg-red-50 dark:bg-red-900/30 p-3 rounded">
             {error}
           </div>
         )}
+
         <div>
           <button
             type="submit"
@@ -173,16 +148,15 @@ export default function LoginClient() {
             )}
           </button>
         </div>
-        {/* Forgot Password Button */}
+
+        {/* Forgot Password - Now links to dedicated page instead of modal */}
         <div className="text-sm text-center text-gray-500 dark:text-gray-400">
-          <button
-            type="button"
-            onClick={() => setShowForgotModal(true)}
-            disabled={loading}
+          <Link
+            href="/forgot-password"
             className="text-indigo-600 hover:underline dark:text-indigo-400"
           >
             Forgot your password?
-          </button>
+          </Link>
         </div>
       </form>
 
@@ -219,72 +193,6 @@ export default function LoginClient() {
           </span>
         </button>
       </div>
-
-      {/* ==================== FORGOT PASSWORD MODAL ==================== */}
-      {showForgotModal && (
-        <div className="fixed inset-0 bg-black/70 z-[10000] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-6 py-5 border-b flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Reset Your Password
-              </h3>
-              <button
-                onClick={closeForgotModal}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-6">
-              {!forgotSuccess ? (
-                <>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Enter your email address and we'll send you a magic link to reset your password.
-                  </p>
-                  <input
-                    type="email"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white"
-                  />
-                  {forgotError && (
-                    <p className="text-red-600 dark:text-red-400 text-sm mt-3">{forgotError}</p>
-                  )}
-                  <button
-                    onClick={handleForgotPassword}
-                    disabled={forgotLoading || !forgotEmail}
-                    className={`mt-6 w-full py-3.5 text-white font-medium rounded-2xl transition ${
-                      forgotLoading || !forgotEmail
-                        ? "bg-indigo-400 cursor-not-allowed"
-                        : "bg-indigo-600 hover:bg-indigo-700"
-                    }`}
-                  >
-                    {forgotLoading ? "Sending reset link..." : "Send Magic Link"}
-                  </button>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900 rounded-2xl flex items-center justify-center mb-4">
-                    <Brain className="w-8 h-8 text-green-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-green-700 dark:text-green-400">Link Sent!</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Check your inbox for the magic reset link.
-                  </p>
-                  <button
-                    onClick={closeForgotModal}
-                    className="mt-8 px-8 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl font-medium"
-                  >
-                    Close
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
