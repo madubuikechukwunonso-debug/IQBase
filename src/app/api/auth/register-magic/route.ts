@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
     }
 
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 });
+    }
+
+    // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 400 });
@@ -20,33 +25,33 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const token = crypto.randomUUID();
-    const expires = new Date(Date.now() + 15 * 60 * 1000);
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.verificationToken.create({
-      data: { identifier: email, token, expires, hashedPassword },
+      data: {
+        identifier: email,
+        token,
+        expires,
+        hashedPassword,
+      },
     });
 
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const verifyUrl = `${baseUrl}/verify?token=${token}&email=${encodeURIComponent(email)}`;
 
-    // Debug logging
-    console.log("📧 Attempting to send email to:", email);
-    console.log("📧 EMAIL_SERVER_HOST:", process.env.EMAIL_SERVER_HOST || "MISSING");
-    console.log("📧 EMAIL_SERVER_USER:", process.env.EMAIL_SERVER_USER ? "✅ Set" : "❌ MISSING");
-    console.log("📧 EMAIL_SERVER_PASSWORD:", process.env.EMAIL_SERVER_PASSWORD ? "✅ Set" : "❌ MISSING");
-
+    // Use your exact environment variables (no hardcoding)
     const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER_HOST || "smtp.gmail.com",
-      port: Number(process.env.EMAIL_SERVER_PORT) || 587,
+      host: process.env.EMAIL_SERVER_HOST,
+      port: 587,                    // Standard for most SMTP (can be changed via env if needed)
       secure: false,
       auth: {
         user: process.env.EMAIL_SERVER_USER,
-        pass: process.env.EMAIL_SERVER_PASSWORD,
+        pass: process.env.EMAIL_SERVER_PASS,
       },
     });
 
     await transporter.sendMail({
-      from: `"IQBase" <${process.env.EMAIL_SERVER_USER}>`,
+      from: process.env.EMAIL_FROM,   // e.g. "IQBase <no-reply@iqbase.live>"
       to: email,
       subject: "Complete your IQBase registration",
       html: `
@@ -57,10 +62,11 @@ export async function POST(req: NextRequest) {
           Create My Account
         </a>
         <p style="margin-top:20px;color:#666;font-size:14px;">This link expires in 15 minutes.</p>
+        <p style="color:#666;font-size:13px;">If you didn't request this, you can ignore this email.</p>
       `,
     });
 
-    console.log("✅ Magic link sent successfully to", email);
+    console.log(`✅ Magic link sent successfully to ${email}`);
 
     return NextResponse.json({
       success: true,
@@ -69,7 +75,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("❌ Register magic error:", error);
     return NextResponse.json(
-      { error: "Failed to send magic link. Please check your email settings on Vercel." },
+      { error: "Failed to send magic link. Please check your email settings." },
       { status: 500 }
     );
   }
