@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -20,34 +21,42 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     // Client-side validation
-    if (!formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setStatus("error");
       setMessage("Please fill in all fields");
       return;
     }
+
     if (formData.password !== formData.confirmPassword) {
       setStatus("error");
       setMessage("Passwords do not match");
       return;
     }
+
     if (formData.password.length < 8) {
       setStatus("error");
       setMessage("Password must be at least 8 characters long");
       return;
     }
+
     setStatus("loading");
     setMessage("");
+
     try {
       const res = await fetch("/api/auth/register-magic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: formData.name.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
         }),
       });
+
       const data = await res.json();
+
       if (res.ok) {
         setStatus("success");
         setMessage("✅ Magic link sent! Check your email to create your account.");
@@ -106,6 +115,7 @@ export default function RegisterPage() {
             </span>
           </div>
         </div>
+
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             Create your account
@@ -120,7 +130,25 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="name" className="sr-only">
+              Full Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              autoComplete="name"
+              required
+              value={formData.name}
+              onChange={handleChange}
+              className="appearance-none relative block w-full px-3 py-4 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white dark:bg-gray-800 text-base"
+              placeholder="Full Name"
+            />
+          </div>
+
           <div>
             <label htmlFor="email" className="sr-only">
               Email address
@@ -137,6 +165,7 @@ export default function RegisterPage() {
               placeholder="your@email.com"
             />
           </div>
+
           <div>
             <label htmlFor="password" className="sr-only">
               Password
@@ -153,6 +182,7 @@ export default function RegisterPage() {
               placeholder="Create a password"
             />
           </div>
+
           <div>
             <label htmlFor="confirmPassword" className="sr-only">
               Confirm Password
@@ -169,11 +199,13 @@ export default function RegisterPage() {
               placeholder="Re-enter password"
             />
           </div>
+
           {status === "error" && (
             <div className="text-red-600 dark:text-red-400 text-sm text-center bg-red-50 dark:bg-red-900/30 p-3 rounded-2xl">
               {message}
             </div>
           )}
+
           <button
             type="submit"
             disabled={status === "loading"}
@@ -187,7 +219,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {/* SOCIAL LOGIN */}
+        {/* SOCIAL LOGIN - only Gmail as requested */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
