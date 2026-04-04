@@ -1,4 +1,4 @@
-"use client"
+"use client";
 // src/app/verify/page.tsx
 import { Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -25,16 +25,20 @@ function VerifyContent() {
     const verifyAccount = async () => {
       try {
         const res = await fetch("/api/auth/verify", {
-          method: "GET", // ← Changed to GET to match your verify/route.ts
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, email }),
         })
+
+        const data = await res.json()
 
         if (res.ok) {
           setStatus("success")
-          setMessage("Account created successfully! Redirecting...")
-          setTimeout(() => router.push("/dashboard"), 1500)
+          setMessage("Account created successfully! Redirecting to login...")
+          setTimeout(() => router.push("/login"), 2000)
         } else {
           setStatus("error")
-          setMessage("Invalid or expired link")
+          setMessage(data.error || "Invalid or expired link")
           setTimeout(() => router.push("/login"), 2000)
         }
       } catch (error) {
