@@ -40,12 +40,10 @@ export default function TestPage() {
     if (status === "loading") return;
 
     if (!session?.user) {
-      // Redirect to login and come back to /test after successful login
       router.push(`/login?callbackUrl=/test`);
       return;
     }
 
-    // User is logged in → proceed to load questions
     fetchQuestions();
   }, [session, status, router]);
 
@@ -83,7 +81,6 @@ export default function TestPage() {
   // Timer
   useEffect(() => {
     if (testState !== 'testing' || showFeedback) return;
-
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -93,7 +90,6 @@ export default function TestPage() {
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [testState, currentIndex, showFeedback]);
 
@@ -143,24 +139,20 @@ export default function TestPage() {
         body: JSON.stringify({ answers: finalAnswers, result: testResult }),
       });
       const data = await res.json();
-      if (data.testId) setTestId(data.testId);
+      if (data.testId) {
+        setTestId(data.testId);
+      }
     } catch (err) {
       console.error('Failed to save test', err);
     }
   };
 
-  // Redirect to pricing (or results) after completion
+  // Redirect to pricing ONLY after we have a valid testId
   useEffect(() => {
     if (testState === 'completed' && result && testId) {
       router.push(`/pricing?testId=${testId}`);
     }
   }, [testState, result, testId, router]);
-
-  useEffect(() => {
-    if (status !== "loading" && session?.user) {
-      fetchQuestions();
-    }
-  }, [fetchQuestions, session, status]);
 
   if (loading) {
     return (
@@ -206,10 +198,9 @@ export default function TestPage() {
             <CardTitle>Assessment Complete!</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-6">Redirecting to pricing...</p>
-            <Button disabled>
+            <Button disabled className="w-full">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Please wait...
+              Redirecting to pricing...
             </Button>
           </CardContent>
         </Card>
@@ -238,7 +229,6 @@ export default function TestPage() {
           <CardTitle className="text-xl leading-relaxed">{currentQuestion.question}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Image Support */}
           {currentQuestion.imageUrl && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -253,7 +243,6 @@ export default function TestPage() {
             </motion.div>
           )}
 
-          {/* Answer Options */}
           <div className="space-y-3">
             {currentQuestion.options.map((option, index) => (
               <button
