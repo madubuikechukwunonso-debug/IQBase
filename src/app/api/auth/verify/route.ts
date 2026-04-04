@@ -2,50 +2,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const token = searchParams.get("token");
-  const email = searchParams.get("email");
-
-  if (!token || !email) {
-    return NextResponse.redirect(new URL("/login?error=invalid-link", req.url));
-  }
-
+export async function POST(req: NextRequest) {
   try {
-    const verification = await prisma.verificationToken.findUnique({
-      where: { token },
-    });
+    const { token, email } = await req.json();
 
-    if (!verification || verification.identifier !== email.toLowerCase() || verification.expires < new Date()) {
-      return NextResponse.redirect(new URL("/login?error=expired-link", req.url));
+    if (!token || !email) {
+      return NextResponse.json({ error: "Invalid or missing verification link" }, { status: 400 });
     }
 
+    // Find the verification token
+    const verification = await prisma.verificationToken.findUnique({
+      where: {
+        identifier_token: {
+          identifier: email.toLowerCase(),
+          token,
+        },
+      },
+    });
+
+    if (!verification || verification.expires < new Date()) {
+      return NextResponse.json({ error: "Invalid or expired verification link" }, { status: 400 });
+    }
+
+    if (!verification.hashedPassword) {
+      return NextResponse.json({ error: "No password found for this verification" }, { status: 400 });
+    }
+
+    // Check if user already exists
     let user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
 
     if (!user) {
+      // Create the user with the hashed password from verification token
       user = await prisma.user.create({
         data: {
           email: email.toLowerCase(),
-          name: email.split("@")[0],
-          hashedPassword: verification.hashedPassword!,
+          name: email.split("@")[0],           // temporary name (user can update later)
+          hashedPassword: verification.hashedPassword,
           emailVerified: new Date(),
           role: "USER",
         },
       });
+      console.log(`✅ New user created: ${user.email} (ID: ${user.id})`);
     } else if (!user.emailVerified) {
+      // Update existing user (rare case)
       await prisma.user.update({
         where: { id: user.id },
         data: { emailVerified: new Date() },
       });
     }
 
-    await prisma.verificationToken.delete({ where: { token } });
+    // Delete the used verification token
+    await prisma.verificationToken.delete({
+      where: {
+        identifier_token: {
+          identifier: email.toLowerCase(),
+          token,
+        },
+      },
+    });
 
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true, 
+      message: "Account created successfully" 
+    });
+  } catch (error: any) {
     console.error("Verify error:", error);
-    return NextResponse.redirect(new URL("/login?error=server-error", req.url));
+    return NextResponse.json({ 
+      error: "Failed to create account. Please try again." 
+    }, { status: 500 });
   }
 }
