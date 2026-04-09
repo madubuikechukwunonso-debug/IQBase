@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
   const { prompt, difficulty = 3 } = await req.json();
 
-  // Fetch recent questions for anti-repetition (memory)
+  // Fetch recent questions to prevent repetition
   let recentQuestions: any[] = [];
   try {
     recentQuestions = await prisma.question.findMany({
@@ -26,24 +26,24 @@ export async function POST(req: Request) {
       take: 35,
     });
   } catch (dbError) {
-    console.warn("Could not fetch recent questions:", dbError);
+    console.warn("Warning: Could not fetch recent questions for anti-repetition", dbError);
   }
 
   const existingList = recentQuestions
     .map((q, i) => `${i + 1}. ${q.question} (Type: ${q.type}, Diff: ${q.difficulty})`)
     .join("\n");
 
-  const systemPrompt = `You are an expert IQ test question creator.
+  const systemPrompt = `You are a world-class IQ test question creator.
 
-ANTI-REPETITION RULES (strict):
-Here are recently used questions:
-${existingList || "No previous questions."}
+STRICT ANTI-REPETITION RULES:
+Here are the most recent questions already in the database:
+${existingList || "No previous questions yet."}
 
-Do NOT repeat, reword, or use similar logic, numbers, scenarios, or structures.
+→ NEVER repeat, reword, or create similar logic, numbers, scenarios, or structures.
 
-Generate **exactly one** fresh, high-quality IQ question.
+Generate **exactly one** fresh, high-quality, original IQ question.
 
-Output ONLY valid JSON:
+Output ONLY valid JSON. No extra text.
 
 {
   "type": "logical" | "pattern" | "numerical" | "verbal" | "visual" | "cultural",
@@ -53,58 +53,58 @@ Output ONLY valid JSON:
   "correctAnswer": number (0-3),
   "explanation": string,
   "timeLimit": number (30-90),
-  "visualDescription": "detailed vivid description for image generation"
+  "visualDescription": "detailed vivid image description"
 }`;
 
-  const userPrompt = prompt || `Create one original difficulty ${difficulty} IQ question that is completely different from all previous ones.`;
+  const userPrompt = prompt || `Create one completely original difficulty ${difficulty} IQ question that is different from all previous ones.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      // More reliable & faster models on HF Router:
-      model: "deepseek-ai/DeepSeek-V3",           // ← Best balance right now
-      // Alternatives you can try:
-      // model: "deepseek-ai/DeepSeek-V3:fastest",
-      // model: "Qwen/Qwen2.5-72B-Instruct",     // very good & stable
+      // More reliable model on HF Router (as of April 2026)
+      model: "deepseek-ai/DeepSeek-V3",
 
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.95,
+      temperature: 0.93,
       max_tokens: 1400,
       response_format: { type: "json_object" },
     });
 
     const rawText = completion.choices[0]?.message?.content?.trim() || "";
 
-    if (!rawText) throw new Error("Empty response from model");
+    if (!rawText) {
+      throw new Error("Model returned empty response");
+    }
 
-    // Extract JSON
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No valid JSON found in response");
+    if (!jsonMatch) {
+      throw new Error("No valid JSON found in model response");
+    }
 
     let parsed = JSON.parse(jsonMatch[0]);
 
-    // Fallbacks
+    // Fallbacks for safety
     if (!parsed.visualDescription) {
-      parsed.visualDescription = "A beautiful, thoughtful, and artistic illustration suitable for an IQ test question.";
+      parsed.visualDescription = "A beautiful, artistic, and meaningful illustration for an IQ test question with rich colors and clear composition.";
     }
     if (typeof parsed.difficulty !== "number") parsed.difficulty = difficulty;
-    if (!Array.isArray(parsed.options) || parsed.options.length < 4) {
-      throw new Error("Invalid options returned by model");
+    if (!Array.isArray(parsed.options) || parsed.options.length !== 4) {
+      throw new Error("Model returned invalid options array");
     }
 
-    console.log("✅ Question generated successfully");
+    console.log("✅ Question generated successfully with DeepSeek-V3");
     return NextResponse.json(parsed);
 
   } catch (error: any) {
-    console.error("❌ Question Generation Error:", error?.message || error);
+    console.error("❌ Generation Error:", error.message || error);
 
     return NextResponse.json(
-      { 
+      {
         error: "Question generation failed",
-        details: error?.message || "Unknown error",
-        modelUsed: "deepseek-ai/DeepSeek-V3"
+        details: error.message || "Unknown error from model",
+        model: "deepseek-ai/DeepSeek-V3"
       },
       { status: 500 }
     );
