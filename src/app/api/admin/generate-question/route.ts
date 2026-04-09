@@ -2,11 +2,11 @@
 import { OpenAI } from "openai";
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/session";
-import prisma from "@/lib/prisma";   // Adjust path if your prisma client is elsewhere
+import prisma from "@/lib/prisma";
 
 const openai = new OpenAI({
   baseURL: "https://router.huggingface.co/v1",
-  apiKey: process.env.HUGGINGFACE_API_TOKEN,   // ← Correct variable name as you specified
+  apiKey: process.env.HUGGINGFACE_API_TOKEN,
 });
 
 export async function POST(req: Request) {
@@ -15,40 +15,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const { prompt, difficulty } = await req.json();
+  const { prompt, difficulty = 3 } = await req.json();
 
-  // === Fetch recent questions to give the model "memory" and prevent repetition ===
-  const recentQuestions = await prisma.question.findMany({
-    select: {
-      question: true,
-      type: true,
-      difficulty: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 40,
-  });
+  // Fetch recent questions for anti-repetition (memory)
+  let recentQuestions: any[] = [];
+  try {
+    recentQuestions = await prisma.question.findMany({
+      select: { question: true, type: true, difficulty: true },
+      orderBy: { createdAt: "desc" },
+      take: 35,
+    });
+  } catch (dbError) {
+    console.warn("Could not fetch recent questions:", dbError);
+  }
 
   const existingList = recentQuestions
-    .map((q, i) => `${i + 1}. ${q.question} (Type: ${q.type}, Difficulty: ${q.difficulty})`)
+    .map((q, i) => `${i + 1}. ${q.question} (Type: ${q.type}, Diff: ${q.difficulty})`)
     .join("\n");
 
-  const systemPrompt = `You are a world-class IQ test designer specializing in creating original, high-quality cognitive assessment questions.
+  const systemPrompt = `You are an expert IQ test question creator.
 
-CRITICAL ANTI-REPETITION RULES — Follow strictly:
-- NEVER repeat, slightly reword, or use similar logic, numbers, scenarios, or structures from previously generated questions.
-Here are the most recent 40 questions already in the system:
+ANTI-REPETITION RULES (strict):
+Here are recently used questions:
+${existingList || "No previous questions."}
 
-${existingList || "No previous questions yet."}
+Do NOT repeat, reword, or use similar logic, numbers, scenarios, or structures.
 
-- Make every new question meaningfully different in theme, reasoning style, and wording.
-- Vary between syllogism, sequences, analogies, conditional reasoning, probability, spatial thinking, etc.
-- Use real-world, cultural, historical, scientific, or philosophical themes when appropriate.
+Generate **exactly one** fresh, high-quality IQ question.
 
-Generate **exactly one** completely ORIGINAL high-quality IQ question.
+Output ONLY valid JSON:
 
-Output ONLY valid JSON. No extra text, no markdown, no explanations.
-
-Required JSON structure:
 {
   "type": "logical" | "pattern" | "numerical" | "verbal" | "visual" | "cultural",
   "difficulty": number (1-5),
@@ -57,53 +53,58 @@ Required JSON structure:
   "correctAnswer": number (0-3),
   "explanation": string,
   "timeLimit": number (30-90),
-  "visualDescription": "Rich, detailed, vivid description for image generation including colors, clothing, setting, lighting, mood, and composition."
+  "visualDescription": "detailed vivid description for image generation"
 }`;
 
-  const userPrompt = prompt || 
-    `Create one fresh, original ${difficulty ? `difficulty level ${difficulty}` : "medium difficulty"} IQ question that is different from all previous ones.`;
+  const userPrompt = prompt || `Create one original difficulty ${difficulty} IQ question that is completely different from all previous ones.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "deepseek-ai/DeepSeek-R1:fastest",     // Strong reasoning + good speed/cost balance
-      // Alternative options:
-      // "deepseek-ai/DeepSeek-R1"          → strongest reasoning
-      // "deepseek-ai/DeepSeek-V3:fastest"  → faster & cheaper
+      // More reliable & faster models on HF Router:
+      model: "deepseek-ai/DeepSeek-V3",           // ← Best balance right now
+      // Alternatives you can try:
+      // model: "deepseek-ai/DeepSeek-V3:fastest",
+      // model: "Qwen/Qwen2.5-72B-Instruct",     // very good & stable
 
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.92,
-      max_tokens: 1300,
+      temperature: 0.95,
+      max_tokens: 1400,
       response_format: { type: "json_object" },
     });
 
-    const rawText = completion.choices[0]?.message?.content || "";
+    const rawText = completion.choices[0]?.message?.content?.trim() || "";
 
+    if (!rawText) throw new Error("Empty response from model");
+
+    // Extract JSON
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No valid JSON found in model response");
+    if (!jsonMatch) throw new Error("No valid JSON found in response");
 
     let parsed = JSON.parse(jsonMatch[0]);
 
-    // Safety fallbacks
+    // Fallbacks
     if (!parsed.visualDescription) {
-      parsed.visualDescription = parsed.question || "A beautiful and thoughtful IQ test illustration.";
+      parsed.visualDescription = "A beautiful, thoughtful, and artistic illustration suitable for an IQ test question.";
     }
-    if (typeof parsed.difficulty !== "number") {
-      parsed.difficulty = difficulty || 3;
-    }
-    if (!Array.isArray(parsed.options) || parsed.options.length !== 4) {
-      throw new Error("Invalid options array returned");
+    if (typeof parsed.difficulty !== "number") parsed.difficulty = difficulty;
+    if (!Array.isArray(parsed.options) || parsed.options.length < 4) {
+      throw new Error("Invalid options returned by model");
     }
 
+    console.log("✅ Question generated successfully");
     return NextResponse.json(parsed);
+
   } catch (error: any) {
-    console.error("Hugging Face / DeepSeek Error:", error);
+    console.error("❌ Question Generation Error:", error?.message || error);
+
     return NextResponse.json(
       { 
-        error: error.message || "Failed to generate question",
-        details: error?.response?.data || null 
+        error: "Question generation failed",
+        details: error?.message || "Unknown error",
+        modelUsed: "deepseek-ai/DeepSeek-V3"
       },
       { status: 500 }
     );
