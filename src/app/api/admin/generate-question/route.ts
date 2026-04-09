@@ -1,8 +1,13 @@
 // src/app/api/admin/generate-question/route.ts
-import { groq } from "@ai-sdk/groq";
-import { generateText } from "ai";
+import { OpenAI } from "openai";
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/session";
+import prisma from "@/lib/prisma";   // Adjust path if your prisma client is elsewhere
+
+const openai = new OpenAI({
+  baseURL: "https://router.huggingface.co/v1",
+  apiKey: process.env.HUGGINGFACE_API_TOKEN,   // ← Correct variable name as you specified
+});
 
 export async function POST(req: Request) {
   const user = await getUser();
@@ -10,17 +15,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const { prompt } = await req.json();
+  const { prompt, difficulty } = await req.json();
 
-  const systemPrompt = `You are a world-class IQ test designer who creates advanced, thought-provoking, and visually engaging questions.
+  // === Fetch recent questions to give the model "memory" and prevent repetition ===
+  const recentQuestions = await prisma.question.findMany({
+    select: {
+      question: true,
+      type: true,
+      difficulty: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 40,
+  });
 
-Generate **exactly one** completely ORIGINAL, high-quality IQ question.
+  const existingList = recentQuestions
+    .map((q, i) => `${i + 1}. ${q.question} (Type: ${q.type}, Difficulty: ${q.difficulty})`)
+    .join("\n");
 
-Make it interesting and real-world oriented. Use themes like history, culture, religion, science, nature, architecture, famous figures, symbols, art, philosophy, or daily life scenarios — not just abstract geometric patterns.
+  const systemPrompt = `You are a world-class IQ test designer specializing in creating original, high-quality cognitive assessment questions.
 
-Output ONLY valid JSON. No extra text.
+CRITICAL ANTI-REPETITION RULES — Follow strictly:
+- NEVER repeat, slightly reword, or use similar logic, numbers, scenarios, or structures from previously generated questions.
+Here are the most recent 40 questions already in the system:
 
-Required structure:
+${existingList || "No previous questions yet."}
+
+- Make every new question meaningfully different in theme, reasoning style, and wording.
+- Vary between syllogism, sequences, analogies, conditional reasoning, probability, spatial thinking, etc.
+- Use real-world, cultural, historical, scientific, or philosophical themes when appropriate.
+
+Generate **exactly one** completely ORIGINAL high-quality IQ question.
+
+Output ONLY valid JSON. No extra text, no markdown, no explanations.
+
+Required JSON structure:
 {
   "type": "logical" | "pattern" | "numerical" | "verbal" | "visual" | "cultural",
   "difficulty": number (1-5),
@@ -29,32 +57,54 @@ Required structure:
   "correctAnswer": number (0-3),
   "explanation": string,
   "timeLimit": number (30-90),
-  "visualDescription": "A rich, highly detailed, vivid description of the image that should accompany this question. Make it visually striking and relevant. Describe colors, clothing, setting, lighting, mood, and composition in detail so it produces a beautiful and meaningful image."
+  "visualDescription": "Rich, detailed, vivid description for image generation including colors, clothing, setting, lighting, mood, and composition."
 }`;
 
+  const userPrompt = prompt || 
+    `Create one fresh, original ${difficulty ? `difficulty level ${difficulty}` : "medium difficulty"} IQ question that is different from all previous ones.`;
+
   try {
-    const { text } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
-      system: systemPrompt,
-      prompt: prompt,
-      temperature: 0.9,
+    const completion = await openai.chat.completions.create({
+      model: "deepseek-ai/DeepSeek-R1:fastest",     // Strong reasoning + good speed/cost balance
+      // Alternative options:
+      // "deepseek-ai/DeepSeek-R1"          → strongest reasoning
+      // "deepseek-ai/DeepSeek-V3:fastest"  → faster & cheaper
+
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.92,
+      max_tokens: 1300,
+      response_format: { type: "json_object" },
     });
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found in response");
+    const rawText = completion.choices[0]?.message?.content || "";
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No valid JSON found in model response");
 
-    // Fallback if visualDescription is missing
+    let parsed = JSON.parse(jsonMatch[0]);
+
+    // Safety fallbacks
     if (!parsed.visualDescription) {
-      parsed.visualDescription = parsed.question;
+      parsed.visualDescription = parsed.question || "A beautiful and thoughtful IQ test illustration.";
+    }
+    if (typeof parsed.difficulty !== "number") {
+      parsed.difficulty = difficulty || 3;
+    }
+    if (!Array.isArray(parsed.options) || parsed.options.length !== 4) {
+      throw new Error("Invalid options array returned");
     }
 
     return NextResponse.json(parsed);
   } catch (error: any) {
-    console.error("Groq Error:", error);
+    console.error("Hugging Face / DeepSeek Error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to generate question" },
+      { 
+        error: error.message || "Failed to generate question",
+        details: error?.response?.data || null 
+      },
       { status: 500 }
     );
   }
