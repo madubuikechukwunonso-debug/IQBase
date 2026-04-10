@@ -4,9 +4,9 @@ import { NextResponse } from "next/server";
 import { getUser } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
-const deepseek = new OpenAI({
-  baseURL: "https://api.deepseek.com",
-  apiKey: process.env.DEEPSEEK_API_KEY,
+const openai = new OpenAI({
+  baseURL: "https://router.huggingface.co/v1",
+  apiKey: process.env.HUGGINGFACE_API_TOKEN,
 });
 
 export async function POST(req: Request) {
@@ -17,72 +17,95 @@ export async function POST(req: Request) {
 
   const { prompt, difficulty = 3 } = await req.json();
 
-  // Fetch recent questions (keep it reasonable)
+  // Fetch recent questions (limit to reduce token usage)
   const recentQuestions = await prisma.question.findMany({
     select: { question: true, type: true, difficulty: true },
     orderBy: { createdAt: "desc" },
-    take: 30,
+    take: 30,                    // Reduced to avoid context bloat
   });
 
   const existingList = recentQuestions
     .map((q, i) => `${i + 1}. ${q.question}`)
     .join("\n");
 
-  const systemPrompt = `You are a world-class IQ test question creator.
+  const systemPrompt = `You are an expert IQ test creator.
 
-STRICT ANTI-REPETITION:
+RULES:
+- NEVER repeat or slightly modify any existing question.
 Existing questions:
 ${existingList || "None yet."}
 
-NEVER repeat or reword any of them.
+You MUST respond with **ONLY** a valid JSON object. 
+No thinking, no explanation, no markdown, no extra text before or after the JSON.
 
-Respond with **ONLY** valid JSON. No extra text.
-
+JSON format:
 {
   "type": "logical" | "pattern" | "numerical" | "verbal" | "visual" | "cultural",
-  "difficulty": number (1-5),
-  "question": "full question",
+  "difficulty": number,
+  "question": "full question text",
   "options": ["A", "B", "C", "D"],
   "correctAnswer": 0,
   "explanation": "brief explanation",
   "timeLimit": 45,
-  "visualDescription": "detailed image description"
+  "visualDescription": "detailed image prompt"
 }`;
 
-  const userPrompt = prompt || `Create one completely original difficulty ${difficulty} IQ question, different from all previous ones.`;
+  const userPrompt = prompt || `Generate one completely new original difficulty ${difficulty} IQ question.`;
 
   try {
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-reasoner",        // or "deepseek-chat" for faster/cheaper
+    const completion = await openai.chat.completions.create({
+      model: "Qwen/Qwen2.5-72B-Instruct",     // ← Switched to Qwen (much better at strict JSON)
+      // Alternative: "deepseek-ai/DeepSeek-V3" if you want to test again
+
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.9,
-      max_tokens: 1400,
-      response_format: { type: "json_object" },
+      temperature: 0.85,
+      max_tokens: 1200,
     });
 
-    const rawText = completion.choices[0]?.message?.content?.trim() || "";
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    let rawText = completion.choices[0]?.message?.content?.trim() || "";
 
-    if (!jsonMatch) throw new Error("No JSON in response");
+    if (!rawText) throw new Error("Empty response from model");
 
-    let parsed = JSON.parse(jsonMatch[0]);
+    // Aggressive JSON cleaning
+    let jsonStr = rawText;
+
+    // Remove common unwanted wrappers
+    jsonStr = jsonStr.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+    jsonStr = jsonStr.replace(/^[\s\S]*?(\{[\s\S]*\})/, "$1"); // Extract first JSON object
+
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("Raw model output:", rawText.substring(0, 600));
+      throw new Error("Model did not return valid JSON");
+    }
 
     // Fallbacks
     if (!parsed.visualDescription) {
-      parsed.visualDescription = "A beautiful, artistic illustration suitable for an IQ test question.";
+      parsed.visualDescription = "Artistic and meaningful illustration for an IQ test question with rich colors and clear details.";
     }
     if (typeof parsed.difficulty !== "number") parsed.difficulty = difficulty;
+    if (!Array.isArray(parsed.options) || parsed.options.length !== 4) {
+      throw new Error("Invalid options");
+    }
 
-    console.log("✅ DeepSeek question generated successfully");
+    console.log("✅ Successfully generated question");
     return NextResponse.json(parsed);
 
   } catch (error: any) {
-    console.error("DeepSeek API Error:", error.message || error);
+    console.error("Generation Error:", error.message || error);
     return NextResponse.json(
-      { error: "Question generation failed", details: error.message },
+      {
+        error: "Question generation failed",
+        details: error.message || "Check server logs for raw output",
+      },
       { status: 500 }
     );
   }
