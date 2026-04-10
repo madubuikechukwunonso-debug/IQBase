@@ -17,104 +17,94 @@ export async function POST(req: Request) {
 
   const { prompt, difficulty = 3 } = await req.json();
 
-  // Fetch recent questions for memory / anti-repetition
-  let recentQuestions: any[] = [];
-  try {
-    recentQuestions = await prisma.question.findMany({
-      select: { question: true, type: true, difficulty: true },
-      orderBy: { createdAt: "desc" },
-      take: 35,
-    });
-  } catch (e) {
-    console.warn("Could not fetch recent questions");
-  }
+  // Fetch recent questions (limit to reduce token usage)
+  const recentQuestions = await prisma.question.findMany({
+    select: { question: true, type: true, difficulty: true },
+    orderBy: { createdAt: "desc" },
+    take: 30,                    // Reduced to avoid context bloat
+  });
 
   const existingList = recentQuestions
-    .map((q, i) => `${i + 1}. ${q.question} (Type: ${q.type}, Diff: ${q.difficulty})`)
+    .map((q, i) => `${i + 1}. ${q.question}`)
     .join("\n");
 
-  const systemPrompt = `You are a world-class IQ test question creator.
+  const systemPrompt = `You are an expert IQ test creator.
 
-STRICT RULES:
-- NEVER repeat or slightly reword any of the following existing questions:
-${existingList || "No previous questions yet."}
+RULES:
+- NEVER repeat or slightly modify any existing question.
+Existing questions:
+${existingList || "None yet."}
 
-Generate **exactly one** fresh, original IQ question.
+You MUST respond with **ONLY** a valid JSON object. 
+No thinking, no explanation, no markdown, no extra text before or after the JSON.
 
-IMPORTANT: Your entire response must be a single valid JSON object. 
-Do not add any explanation, thinking, or extra text before or after the JSON.
-
-Output format:
+JSON format:
 {
   "type": "logical" | "pattern" | "numerical" | "verbal" | "visual" | "cultural",
-  "difficulty": number (1-5),
-  "question": "the full question text",
-  "options": ["option A", "option B", "option C", "option D"],
+  "difficulty": number,
+  "question": "full question text",
+  "options": ["A", "B", "C", "D"],
   "correctAnswer": 0,
-  "explanation": "short clear explanation",
+  "explanation": "brief explanation",
   "timeLimit": 45,
-  "visualDescription": "detailed description for image if visual"
+  "visualDescription": "detailed image prompt"
 }`;
 
-  const userPrompt = prompt || `Create one completely new and original difficulty ${difficulty} IQ question that is different from all previous ones.`;
+  const userPrompt = prompt || `Generate one completely new original difficulty ${difficulty} IQ question.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "deepseek-ai/DeepSeek-V3",
+      model: "Qwen/Qwen2.5-72B-Instruct",     // ← Switched to Qwen (much better at strict JSON)
+      // Alternative: "deepseek-ai/DeepSeek-V3" if you want to test again
+
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.9,
-      max_tokens: 1600,
-      // We remove response_format because it's unreliable on HF router for this model
+      temperature: 0.85,
+      max_tokens: 1200,
     });
 
     let rawText = completion.choices[0]?.message?.content?.trim() || "";
 
-    if (!rawText) {
-      throw new Error("Model returned empty response");
-    }
+    if (!rawText) throw new Error("Empty response from model");
 
-    // Improved JSON extraction - handles common cases where model adds extra text
+    // Aggressive JSON cleaning
     let jsonStr = rawText;
 
-    // Try to extract JSON if there's extra text
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[0];
-    }
+    // Remove common unwanted wrappers
+    jsonStr = jsonStr.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+    jsonStr = jsonStr.replace(/^[\s\S]*?(\{[\s\S]*\})/, "$1"); // Extract first JSON object
+
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
 
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
-    } catch (parseErr) {
-      console.error("JSON Parse Failed. Raw output:", rawText.substring(0, 500));
+    } catch (e) {
+      console.error("Raw model output:", rawText.substring(0, 600));
       throw new Error("Model did not return valid JSON");
     }
 
-    // Safety fallbacks
+    // Fallbacks
     if (!parsed.visualDescription) {
-      parsed.visualDescription = "A beautiful artistic illustration suitable for an IQ test question with rich details and clear composition.";
+      parsed.visualDescription = "Artistic and meaningful illustration for an IQ test question with rich colors and clear details.";
     }
     if (typeof parsed.difficulty !== "number") parsed.difficulty = difficulty;
     if (!Array.isArray(parsed.options) || parsed.options.length !== 4) {
-      throw new Error("Invalid options array");
-    }
-    if (typeof parsed.correctAnswer !== "number") {
-      parsed.correctAnswer = 0;
+      throw new Error("Invalid options");
     }
 
-    console.log("✅ Question generated successfully");
+    console.log("✅ Successfully generated question");
     return NextResponse.json(parsed);
 
   } catch (error: any) {
-    console.error("❌ Generation Error:", error.message || error);
-
+    console.error("Generation Error:", error.message || error);
     return NextResponse.json(
       {
         error: "Question generation failed",
-        details: error.message || "Model failed to return valid JSON",
+        details: error.message || "Check server logs for raw output",
       },
       { status: 500 }
     );
